@@ -99,7 +99,7 @@ $posts = $stmtPosts->fetchAll(PDO::FETCH_ASSOC);
   </style>
 </head>
 <body>
-
+/* 以下是社團介紹公版 */
   <nav class="navbar navbar-expand-lg bg-light fs-6 p-3 border-bottom">
     <div class="container">
       <a class="navbar-brand" href="index.html">FJU_CLUB</a>
