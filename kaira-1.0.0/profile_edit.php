@@ -1,6 +1,5 @@
 <?php
 session_start();
-require_once "header.php";
 
 $host    = "localhost";
 $dbname  = "sa2026";
@@ -50,6 +49,7 @@ $avatar = $user["avatar_url"] ?: "https://ui-avatars.com/api/?name=" . urlencode
 
 // 表單顯示的暱稱：POST 失敗時保留輸入值，否則用資料庫值
 $form_nickname = isset($_POST["nickname"]) ? $_POST["nickname"] : ($user["nickname"] ?? "");
+require_once "header.php";
 ?>
 <!DOCTYPE html>
 <html lang="zh-Hant">

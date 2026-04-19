@@ -1,5 +1,6 @@
 <?php
-require_once "header.php";
+session_start();
+
 $host    = "localhost";
 $dbname  = "sa2026";
 $db_user = "root";
@@ -7,8 +8,7 @@ $db_pass = "";
 
 $error = "";
 
-// URL 帶 ?id=N 指定要編輯的社團
-$club_id = isset($_GET["id"]) ? (int)$_GET["id"] : (isset($_POST["club_id"]) ? (int)$_POST["club_id"] : 1);
+$club_id = isset($_GET["id"]) ? (int)$_GET["id"] : (isset($_POST["club_id"]) ? (int)$_POST["club_id"] : 0);
 
 try {
     $pdo = new PDO(
@@ -22,34 +22,58 @@ try {
     if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $description = trim($_POST["description"] ?? "");
         $image       = trim($_POST["image"]       ?? "");
+        $email       = trim($_POST["email"]        ?? "");
 
         if ($description === "") {
             $error = "社團介紹不可為空。";
+        } elseif ($email !== "" && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $error = "信箱格式不正確。";
         } else {
-            $stmt = $pdo->prepare("UPDATE clubs SET description = :description, image = :image WHERE id = :id");
+            // 更新 clubs 表（介紹、圖片）
+            $stmt = $pdo->prepare("UPDATE clubs SET description = :description, image = :image
+                                   WHERE id = :id AND user_id = :uid");
             $stmt->execute([
                 ":description" => $description,
                 ":image"       => $image,
                 ":id"          => $club_id,
+                ":uid"         => $_SESSION["user_id"] ?? null,
             ]);
 
-            header("Location: create_club.php?id=" . $club_id);
+            // 更新 users 表（email）
+            $stmt = $pdo->prepare("UPDATE users SET email = :email WHERE user_id = :uid");
+            $stmt->execute([
+                ":email" => $email,
+                ":uid"   => $_SESSION["user_id"] ?? null,
+            ]);
+
+            header("Location: create_club.php");
             exit;
         }
     }
 
-    // 取得目前社團資料
-    $stmt = $pdo->prepare("SELECT * FROM clubs WHERE id = :id LIMIT 1");
-    $stmt->execute([":id" => $club_id]);
+    // 取得社團資料 + email
+    $stmt = $pdo->prepare("
+        SELECT c.*, u.email
+        FROM clubs c
+        LEFT JOIN users u ON u.user_id = c.user_id
+        WHERE c.id = :id AND c.user_id = :uid
+        LIMIT 1
+    ");
+    $stmt->execute([
+        ":id"  => $club_id,
+        ":uid" => $_SESSION["user_id"] ?? null,
+    ]);
     $club = $stmt->fetch(PDO::FETCH_ASSOC);
 
 } catch (PDOException $e) {
     die("資料庫連線失敗：" . $e->getMessage());
 }
 
-// 表單顯示值：POST 失敗時保留輸入，否則用資料庫值
 $form_description = isset($_POST["description"]) ? $_POST["description"] : ($club["description"] ?? "");
 $form_image       = isset($_POST["image"])       ? $_POST["image"]       : ($club["image"]       ?? "");
+$form_email       = isset($_POST["email"])       ? $_POST["email"]       : ($club["email"]       ?? "");
+
+require_once "header.php";
 ?>
 <!DOCTYPE html>
 <html lang="zh-Hant">
@@ -85,20 +109,6 @@ $form_image       = isset($_POST["image"])       ? $_POST["image"]       : ($clu
       flex-direction: column;
     }
 
-    /* ── Navbar ── */
-    .navbar {
-      background: var(--nav-bg);
-      border-bottom: 1px solid #dde2ea;
-    }
-    .navbar-brand {
-      letter-spacing: 2px;
-      font-size: 20px;
-      font-weight: 700;
-      color: var(--accent);
-      text-decoration: none;
-    }
-
-    /* ── Main layout ── */
     .edit-wrapper {
       flex: 1;
       display: flex;
@@ -107,7 +117,6 @@ $form_image       = isset($_POST["image"])       ? $_POST["image"]       : ($clu
       padding: 48px 16px 60px;
     }
 
-    /* ── Card ── */
     .edit-card {
       width: 100%;
       max-width: 780px;
@@ -138,7 +147,6 @@ $form_image       = isset($_POST["image"])       ? $_POST["image"]       : ($clu
       letter-spacing: 1px;
     }
 
-    /* ── Preview image ── */
     .preview-wrap {
       width: 100%;
       height: 260px;
@@ -169,12 +177,8 @@ $form_image       = isset($_POST["image"])       ? $_POST["image"]       : ($clu
     .preview-placeholder i { font-size: 48px; }
     .preview-placeholder span { font-size: 13px; }
 
-    /* ── Card body ── */
-    .edit-card-body {
-      padding: 36px 48px 44px;
-    }
+    .edit-card-body { padding: 36px 48px 44px; }
 
-    /* ── Read-only rows ── */
     .readonly-row {
       display: flex;
       align-items: center;
@@ -209,7 +213,6 @@ $form_image       = isset($_POST["image"])       ? $_POST["image"]       : ($clu
       color: #2d3a4a;
     }
 
-    /* ── Form ── */
     .form-section { margin-top: 24px; }
 
     .form-label {
@@ -262,7 +265,6 @@ $form_image       = isset($_POST["image"])       ? $_POST["image"]       : ($clu
       margin-top: 5px;
     }
 
-    /* ── Alert ── */
     .alert-error {
       background: #fdf0ef;
       border: 1px solid #f0c4c0;
@@ -276,14 +278,12 @@ $form_image       = isset($_POST["image"])       ? $_POST["image"]       : ($clu
       margin-bottom: 20px;
     }
 
-    /* ── Divider ── */
     .divider {
       border: none;
       border-top: 1px solid #e8ecf0;
       margin: 28px 0;
     }
 
-    /* ── Buttons ── */
     .btn-save {
       background: var(--btn-bg);
       color: #fff;
@@ -315,7 +315,6 @@ $form_image       = isset($_POST["image"])       ? $_POST["image"]       : ($clu
 
     .btn-cancel:hover { color: #3a3a3a; }
 
-    /* ── Footer ── */
     footer {
       background-color: var(--footer-bg);
       color: #333;
@@ -327,11 +326,9 @@ $form_image       = isset($_POST["image"])       ? $_POST["image"]       : ($clu
 </head>
 <body>
 
-  <!-- 編輯區 -->
   <div class="edit-wrapper">
     <div class="edit-card">
 
-      <!-- 卡片頂部 -->
       <div class="edit-card-header">
         <div class="logo-text">編輯社團資料</div>
         <div class="subtitle">天主教輔仁大學 社團平台</div>
@@ -340,12 +337,11 @@ $form_image       = isset($_POST["image"])       ? $_POST["image"]       : ($clu
       <!-- 圖片預覽 -->
       <div class="preview-wrap" id="previewWrap">
         <?php if (!empty($form_image)): ?>
-          <img id="previewImg"
-               src="<?= htmlspecialchars($form_image) ?>"
+          <img src="<?= htmlspecialchars($form_image) ?>"
                alt="社團圖片預覽"
                onerror="showPlaceholder()">
         <?php else: ?>
-          <div class="preview-placeholder" id="previewPlaceholder">
+          <div class="preview-placeholder">
             <i class="bi bi-image"></i>
             <span>輸入圖片網址後將自動預覽</span>
           </div>
@@ -355,8 +351,7 @@ $form_image       = isset($_POST["image"])       ? $_POST["image"]       : ($clu
       <div class="edit-card-body">
 
         <?php if ($club): ?>
-
-          <!-- 唯讀資訊 -->
+          <!-- 唯讀：社團名稱 -->
           <div class="readonly-row">
             <div class="readonly-icon"><i class="bi bi-building"></i></div>
             <div>
@@ -365,6 +360,7 @@ $form_image       = isset($_POST["image"])       ? $_POST["image"]       : ($clu
             </div>
           </div>
 
+          <!-- 唯讀：社團類別 -->
           <div class="readonly-row">
             <div class="readonly-icon"><i class="bi bi-grid"></i></div>
             <div>
@@ -372,10 +368,8 @@ $form_image       = isset($_POST["image"])       ? $_POST["image"]       : ($clu
               <div class="readonly-value"><?= htmlspecialchars($club["category"]) ?></div>
             </div>
           </div>
-
         <?php endif; ?>
 
-        <!-- 表單 -->
         <div class="form-section">
 
           <?php if ($error): ?>
@@ -406,7 +400,7 @@ $form_image       = isset($_POST["image"])       ? $_POST["image"]       : ($clu
             </div>
 
             <!-- 社團介紹 -->
-            <div class="mb-3">
+            <div class="mb-4">
               <label class="form-label">社團介紹 <span style="color:#c0392b;">*</span></label>
               <div class="input-group align-items-start">
                 <span class="input-group-text" style="border-radius:8px 0 0 8px; padding-top:11px;">
@@ -422,6 +416,22 @@ $form_image       = isset($_POST["image"])       ? $_POST["image"]       : ($clu
               <div class="hint-text">社團介紹為必填，將顯示於社團資料頁面。</div>
             </div>
 
+            <!-- 聯絡信箱 -->
+            <div class="mb-3">
+              <label class="form-label">聯絡信箱</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                <input
+                  type="email"
+                  class="form-control"
+                  name="email"
+                  placeholder="請輸入社團聯絡信箱"
+                  value="<?= htmlspecialchars($form_email) ?>"
+                >
+              </div>
+              <div class="hint-text">信箱將顯示於社團資料頁面，可留空。</div>
+            </div>
+
             <hr class="divider">
 
             <button type="submit" class="btn-save">
@@ -430,7 +440,7 @@ $form_image       = isset($_POST["image"])       ? $_POST["image"]       : ($clu
 
           </form>
 
-          <a href="create_club.php?id=<?= $club_id ?>" class="btn-cancel">
+          <a href="create_club.php" class="btn-cancel">
             <i class="bi bi-arrow-left me-1"></i>取消，返回社團資料
           </a>
 
@@ -439,10 +449,7 @@ $form_image       = isset($_POST["image"])       ? $_POST["image"]       : ($clu
     </div>
   </div>
 
-  <!-- Footer -->
-<?php
-require "footer.php";
-?>
+<?php require "footer.php"; ?>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
@@ -451,7 +458,7 @@ require "footer.php";
 
     function showPlaceholder() {
       previewWrap.innerHTML = `
-        <div class="preview-placeholder" id="previewPlaceholder">
+        <div class="preview-placeholder">
           <i class="bi bi-image"></i>
           <span>圖片無法載入，請確認網址是否正確</span>
         </div>`;
@@ -460,20 +467,16 @@ require "footer.php";
     function updatePreview(url) {
       if (!url) {
         previewWrap.innerHTML = `
-          <div class="preview-placeholder" id="previewPlaceholder">
+          <div class="preview-placeholder">
             <i class="bi bi-image"></i>
             <span>輸入圖片網址後將自動預覽</span>
           </div>`;
         return;
       }
       previewWrap.innerHTML = `
-        <img id="previewImg"
-             src="${url}"
-             alt="社團圖片預覽"
-             onerror="showPlaceholder()">`;
+        <img src="${url}" alt="社團圖片預覽" onerror="showPlaceholder()">`;
     }
 
-    // 即時預覽：停止輸入 800ms 後更新
     let debounceTimer;
     imageInput.addEventListener("input", function () {
       clearTimeout(debounceTimer);

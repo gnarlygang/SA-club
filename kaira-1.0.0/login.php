@@ -43,6 +43,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
     }
 }
+require_once "header.php";
 ?>
 <!DOCTYPE html>
 <html lang="zh-Hant">
@@ -284,13 +285,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 </head>
 <body>
 
-  <!-- 導覽列 -->
-  <nav class="navbar px-4 py-3">
-    <a class="navbar-brand" href="index.html">FJU_CLUB</a>
-    <a href="index.html" class="ms-auto text-decoration-none text-secondary" style="font-size:14px;">
-      <i class="bi bi-arrow-left me-1"></i>回主頁
-    </a>
-  </nav>
 
   <!-- 登入區 -->
   <div class="login-wrapper">

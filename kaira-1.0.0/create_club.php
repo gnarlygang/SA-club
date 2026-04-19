@@ -1,5 +1,6 @@
 <?php
-require_once "header.php";
+session_start();
+
 $host    = "localhost";
 $dbname  = "sa2026";
 $db_user = "root";
@@ -13,30 +14,26 @@ try {
         [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
     );
 
-    // URL 帶 ?id=N 可指定社團，否則顯示第一筆
-    $club_id = isset($_GET["id"]) ? (int)$_GET["id"] : null;
-
-    if ($club_id) {
-        $stmt = $pdo->prepare("SELECT c.*, GROUP_CONCAT(ct.tag_name ORDER BY ct.id SEPARATOR ', ') AS tags
-                               FROM clubs c
-                               LEFT JOIN club_tags ct ON ct.club_id = c.id
-                               WHERE c.id = :id
-                               GROUP BY c.id
-                               LIMIT 1");
-        $stmt->execute([":id" => $club_id]);
-    } else {
-        $stmt = $pdo->query("SELECT c.*, GROUP_CONCAT(ct.tag_name ORDER BY ct.id SEPARATOR ', ') AS tags
-                             FROM clubs c
-                             LEFT JOIN club_tags ct ON ct.club_id = c.id
-                             GROUP BY c.id
-                             ORDER BY c.id ASC
-                             LIMIT 1");
-    }
+    // 用登入的 user_id 找對應社團，同時 JOIN users 取得 email
+    $stmt = $pdo->prepare("
+        SELECT c.*,
+               GROUP_CONCAT(ct.tag_name ORDER BY ct.id SEPARATOR ', ') AS tags,
+               u.email
+        FROM clubs c
+        LEFT JOIN club_tags ct ON ct.club_id = c.id
+        LEFT JOIN users u ON u.user_id = c.user_id
+        WHERE c.user_id = :uid
+        GROUP BY c.id
+        LIMIT 1
+    ");
+    $stmt->execute([":uid" => $_SESSION["user_id"] ?? null]);
     $club = $stmt->fetch(PDO::FETCH_ASSOC);
 
 } catch (PDOException $e) {
     die("資料庫連線失敗：" . $e->getMessage());
 }
+
+require_once "header.php";
 ?>
 <!DOCTYPE html>
 <html lang="zh-Hant">
@@ -69,20 +66,6 @@ try {
       flex-direction: column;
     }
 
-    /* ── Navbar ── */
-    .navbar {
-      background: var(--nav-bg);
-      border-bottom: 1px solid #dde2ea;
-    }
-    .navbar-brand {
-      letter-spacing: 2px;
-      font-size: 20px;
-      font-weight: 700;
-      color: var(--accent);
-      text-decoration: none;
-    }
-
-    /* ── Main layout ── */
     .club-wrapper {
       flex: 1;
       display: flex;
@@ -91,7 +74,6 @@ try {
       padding: 48px 16px 60px;
     }
 
-    /* ── Card ── */
     .club-card {
       width: 100%;
       max-width: 780px;
@@ -122,7 +104,6 @@ try {
       letter-spacing: 1px;
     }
 
-    /* ── Club image ── */
     .club-image-wrap {
       width: 100%;
       height: 280px;
@@ -151,7 +132,6 @@ try {
       padding: 36px 48px 44px;
     }
 
-    /* ── Category badge ── */
     .category-badge {
       display: inline-block;
       font-size: 12px;
@@ -164,7 +144,6 @@ try {
       margin-bottom: 16px;
     }
 
-    /* ── Club name ── */
     .club-name {
       font-size: 26px;
       font-weight: 700;
@@ -172,10 +151,7 @@ try {
       margin-bottom: 6px;
     }
 
-    /* ── Info rows ── */
-    .info-section {
-      margin-top: 24px;
-    }
+    .info-section { margin-top: 24px; }
 
     .info-row {
       display: flex;
@@ -185,9 +161,7 @@ try {
       border-bottom: 1px solid #eef1f5;
     }
 
-    .info-row:last-child {
-      border-bottom: none;
-    }
+    .info-row:last-child { border-bottom: none; }
 
     .info-icon {
       width: 38px;
@@ -203,9 +177,7 @@ try {
       margin-top: 2px;
     }
 
-    .info-content {
-      flex: 1;
-    }
+    .info-content { flex: 1; }
 
     .info-label {
       font-size: 11px;
@@ -224,10 +196,8 @@ try {
     .info-value.description {
       font-weight: 400;
       color: #445;
-      font-size: 15px;
     }
 
-    /* ── Tags ── */
     .tags-wrap {
       display: flex;
       flex-wrap: wrap;
@@ -244,7 +214,6 @@ try {
       background: #f4f6f9;
     }
 
-    /* ── Buttons ── */
     .btn-edit {
       background: var(--btn-bg);
       color: #fff;
@@ -279,14 +248,12 @@ try {
 
     .back-link:hover { color: #3a3a3a; }
 
-    /* ── No data ── */
     .no-data {
       text-align: center;
       padding: 60px 40px;
       color: #aab;
     }
 
-    /* ── Footer ── */
     footer {
       background-color: var(--footer-bg);
       color: #333;
@@ -298,11 +265,9 @@ try {
 </head>
 <body>
 
-  <!-- 社團資料區 -->
   <div class="club-wrapper">
     <div class="club-card">
 
-      <!-- 卡片頂部 -->
       <div class="club-card-header">
         <div class="logo-text">社團資料</div>
         <div class="subtitle">天主教輔仁大學 社團平台</div>
@@ -310,7 +275,6 @@ try {
 
       <?php if ($club): ?>
 
-        <!-- 社團圖片 -->
         <div class="club-image-wrap">
           <?php if (!empty($club["image"])): ?>
             <img src="<?= htmlspecialchars($club["image"]) ?>"
@@ -323,7 +287,6 @@ try {
           <?php endif; ?>
         </div>
 
-        <!-- 卡片內容 -->
         <div class="club-card-body">
 
           <span class="category-badge">
@@ -333,6 +296,7 @@ try {
 
           <div class="info-section">
 
+            <!-- 社團介紹 -->
             <div class="info-row">
               <div class="info-icon"><i class="bi bi-text-paragraph"></i></div>
               <div class="info-content">
@@ -343,6 +307,16 @@ try {
               </div>
             </div>
 
+            <!-- Email -->
+            <div class="info-row">
+              <div class="info-icon"><i class="bi bi-envelope-fill"></i></div>
+              <div class="info-content">
+                <div class="info-label">聯絡信箱</div>
+                <div class="info-value"><?= htmlspecialchars($club["email"] ?? "尚未設定") ?></div>
+              </div>
+            </div>
+
+            <!-- 標籤 -->
             <?php if (!empty($club["tags"])): ?>
             <div class="info-row">
               <div class="info-icon"><i class="bi bi-tags-fill"></i></div>
@@ -363,7 +337,7 @@ try {
             <i class="bi bi-pencil-square me-2"></i>編輯社團資料
           </a>
 
-          <a href="index.html" class="back-link">
+          <a href="index.php" class="back-link">
             <i class="bi bi-house me-1"></i>返回社團平台首頁
           </a>
 
@@ -372,17 +346,14 @@ try {
       <?php else: ?>
         <div class="no-data">
           <i class="bi bi-exclamation-circle" style="font-size:40px; display:block; margin-bottom:12px;"></i>
-          找不到社團資料，請確認資料庫是否有資料。
+          找不到社團資料，請確認您的帳號是否已與社團綁定。
         </div>
       <?php endif; ?>
 
     </div>
   </div>
 
-  <!-- Footer -->
-<?php
-require "footer.php";
-?>
+<?php require "footer.php"; ?>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
