@@ -28,20 +28,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $stmt->execute([":uid" => $input_id]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if ($user && password_verify($input_pw, $user["password"])) {
+            if ($user && $input_pw === $user["password"]) {
                 $_SESSION["user_id"]  = $user["user_id"];
                 $_SESSION["username"] = $user["username"];
                 $_SESSION["role"]     = $user["role"];
 
-                // 依身分別導向不同頁面
-                $role_map = [
-                    1 => "teacher_dashboard.php",
-                    2 => "club_dashboard.php",
-                    3 => "student_dashboard.php",
-                    4 => "admin_dashboard.php",
-                ];
-                $redirect = $role_map[$user["role"]] ?? "index.html";
-                header("Location: $redirect");
+                header("Location: index.php");
                 exit;
             } else {
                 $error = "帳號或密碼錯誤，請重新輸入。";
@@ -376,7 +368,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         </form>
 
-        <a href="index.html" class="back-link">
+        <a href="index.php" class="back-link">
           <i class="bi bi-house me-1"></i>返回社團平台首頁
         </a>
 
