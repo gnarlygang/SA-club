@@ -1,8 +1,8 @@
 <?php
 $host = "localhost";
-$dbname = "club_platform";
+$dbname = "sa2026";
 $username = "root";
-$password = "12345678";
+$password = "";
 
 try {
     $pdo = new PDO(
