@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once "header.php";
 
 $host    = "localhost";
 $dbname  = "sa2026";
@@ -309,18 +310,7 @@ $form_nickname = isset($_POST["nickname"]) ? $_POST["nickname"] : ($user["nickna
 </head>
 <body>
 
-  <!-- 導覽列 -->
-  <nav class="navbar px-4 py-3">
-    <a class="navbar-brand" href="index.html">FJU_CLUB</a>
-    <div class="ms-auto d-flex align-items-center gap-3">
-      <span style="font-size:14px; color:#667;">
-        <?= htmlspecialchars($_SESSION["username"]) ?>
-      </span>
-      <a href="logout.php" class="text-decoration-none text-secondary" style="font-size:14px;">
-        <i class="bi bi-box-arrow-right me-1"></i>登出
-      </a>
-    </div>
-  </nav>
+  
 
   <!-- 編輯區 -->
   <div class="edit-wrapper">
@@ -404,9 +394,9 @@ $form_nickname = isset($_POST["nickname"]) ? $_POST["nickname"] : ($user["nickna
   </div>
 
   <!-- Footer -->
-  <footer>
-    天主教輔仁大學 © 2014-2026 版權所有
-  </footer>
+<?php
+require "footer.php";
+?>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
