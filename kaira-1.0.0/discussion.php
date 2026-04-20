@@ -56,7 +56,7 @@
 
     /* 當前選中項目的樣式，使用 !important 確保優先級 */
     .nav-item.active {
-      background-color: #545454 !important;
+      background-color: #2d3a4a !important;
       color: white !important;
     }
 
