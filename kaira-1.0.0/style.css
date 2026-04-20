@@ -651,7 +651,6 @@ a {
   cursor: default;
   -webkit-transform: translateY(-40px);
   transform: translateY(-40px);
-  -webkit-backface-visibility: hidden;
   -webkit-transition-property: -webkit-transform;
   transition-property: transform;
   -webkit-transition-duration: 0.3s;
@@ -1587,4 +1586,33 @@ a.btn-link.text-light:after {
   line-height: 1.8;
   max-width: 260px;
   margin: 0 auto;
+}
+/* 搜尋結果頁按鈕覆蓋 */
+#page-search-form .input-group button[type="submit"],
+#page-search-form button[type="submit"] {
+  all: unset !important;
+  cursor: pointer !important;
+  color: #6c757d !important;
+  padding: 0 10px !important;
+}
+#page-search-form button[type="submit"]:hover {
+  color: #111 !important;
+}
+#page-search-form button[type="submit"] {
+  background-color: transparent !important;
+  background: transparent !important;
+  color: #555 !important;
+  border: none !important;
+  box-shadow: none !important;
+  white-space: nowrap !important;
+  padding: 0 12px !important;
+  font-size: 16px !important;
+  line-height: 1 !important;
+}
+#page-search-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  white-space: nowrap !important;
+  line-height: 1 !important;
 }

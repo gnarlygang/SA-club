@@ -521,16 +521,9 @@ require_once "header.php"; ?>
           li.innerHTML = `<a href="#" class="text-decoration-none">${keyword}</a>`;
 
           li.addEventListener("click", function (e) {
-            e.preventDefault();
-            currentKeyword = keyword;
-
-            const input = document.getElementById("search-keyword");
-            if (input) input.value = keyword;
-
-            document.getElementById("searchPopup")?.classList.remove("active");
-            loadClubs(currentCategory, currentKeyword);
-            document.getElementById("club-section")?.scrollIntoView({ behavior: "smooth" });
-          });
+  e.preventDefault();
+  window.location.href = `search.php?keyword=${encodeURIComponent(keyword)}`;
+});
 
           list.appendChild(li);
         });

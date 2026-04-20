@@ -1,43 +1,29 @@
 <?php
-header("Content-Type: application/json; charset=UTF-8");
-require_once "db.php";
+require_once "../db.php";
 
-$category = $_GET["category"] ?? "";
-$keyword = $_GET["keyword"] ?? "";
+header("Content-Type: application/json; charset=utf-8");
 
-$sql = "SELECT c.id, c.name, c.category, c.description, c.image,
-        GROUP_CONCAT(ct.tag_name SEPARATOR '、') AS tags
-        FROM clubs c
-        LEFT JOIN club_tags ct ON c.id = ct.club_id
-        WHERE 1=1";
+$keyword  = $_GET['keyword']  ?? '';
+$category = $_GET['category'] ?? '';
 
+$sql    = "SELECT * FROM clubs WHERE 1=1";
 $params = [];
 
-if ($category !== "") {
-    $sql .= " AND c.category = :category";
-    $params[":category"] = $category;
+if ($keyword !== '') {
+    $sql     .= " AND (name LIKE :kw1 OR description LIKE :kw2 OR category LIKE :kw3)";
+    $like     = "%{$keyword}%";
+    $params[':kw1'] = $like;
+    $params[':kw2'] = $like;
+    $params[':kw3'] = $like;
 }
 
-if ($keyword !== "") {
-    $sql .= " AND (
-        c.name LIKE :keyword
-        OR c.description LIKE :keyword
-        OR c.category LIKE :keyword
-        OR ct.tag_name LIKE :keyword
-    )";
-    $params[":keyword"] = "%$keyword%";
+if ($category !== '') {
+    $sql .= " AND category = :category";
+    $params[':category'] = $category;
 }
-
-$sql .= " GROUP BY c.id ORDER BY c.id DESC";
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
+$clubs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-$data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-foreach ($data as &$club) {
-    $club["tags"] = $club["tags"] ? explode("、", $club["tags"]) : [];
-}
-
-echo json_encode($data, JSON_UNESCAPED_UNICODE);
-?>
+echo json_encode($clubs, JSON_UNESCAPED_UNICODE);
