@@ -331,7 +331,7 @@ $avatar = $user["avatar_url"] ?: "https://ui-avatars.com/api/?name=" . urlencode
           <i class="bi bi-pencil-square me-2"></i>編輯個人資料
         </a>
 
-        <a href="index.html" class="back-link">
+        <a href="index.php" class="back-link">
           <i class="bi bi-house me-1"></i>返回社團平台首頁
         </a>
 
