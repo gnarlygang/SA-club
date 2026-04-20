@@ -441,7 +441,7 @@ require_once "header.php"; ?>
         const data = await fetchJson(url);
 
         if (!data.length) {
-          container.innerHTML = '<p class="loading-text">查無符合結果</p>';
+          //container.innerHTML = '<p class="loading-text">查無符合結果</p>';
           return;
         }
 
@@ -584,6 +584,9 @@ require_once "header.php"; ?>
     loadClubs();
     loadHotKeywords();
   </script>
+
+
+<script src="js/script.js"></script>
 
 </body>
 </html>
