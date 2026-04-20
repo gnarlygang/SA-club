@@ -51,7 +51,7 @@
                 </li>
 
                 <li class="nav-item">
-                  <a class="nav-link" href="#">社團問答區</a>
+                  <a class="nav-link" href="discuss.php">社團問答區</a>
                 </li>
               </ul>
             </div>
