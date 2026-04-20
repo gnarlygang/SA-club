@@ -596,72 +596,7 @@
     }
   }
 
-  async function loadClubs(category = "", keyword = "") {
-    const container = document.getElementById("club-list");
-
-    try {
-      const params = new URLSearchParams();
-      if (category) params.append("category", category);
-      if (keyword) params.append("keyword", keyword);
-
-      const url = params.toString() ? `api/clubs.php?${params.toString()}` : "api/clubs.php";
-      const data = await fetchJson(url);
-
-      if (!data.length) {
-        container.innerHTML = '<p class="loading-text">查無符合結果</p>';
-        return;
-      }
-
-      container.innerHTML = data.map(club => `
-        <div class="col-md-4">
-          <div class="club-card border rounded p-2 h-100">
-            <img src="${club.image}" alt="${club.name}">
-            <div class="mt-2">
-              <div style="font-size:12px; color:#777;">${club.category}</div>
-              <h6>${club.name}</h6>
-              <p style="font-size:13px;">${club.description}</p>
-              <div style="font-size:12px; color:#666;">
-                ${Array.isArray(club.tags) ? club.tags.join("、") : ""}
-              </div>
-            </div>
-          </div>
-        </div>
-      `).join("");
-    } catch (error) {
-      container.innerHTML = `<p class="text-danger text-center">社團載入失敗<br>${error.message}</p>`;
-      console.error(error);
-    }
-  }
-
-  async function submitFeedback(email, message) {
-    const result = document.getElementById("feedback-result");
-
-    try {
-      const res = await fetch("api/feedback.php", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ email, message })
-      });
-
-      const text = await res.text();
-      console.log("feedback response:", text);
-
-      const data = JSON.parse(text);
-
-      if (data.success) {
-        result.innerHTML = `<span class="text-success">${data.message}</span>`;
-        document.getElementById("feedback-form").reset();
-      } else {
-        result.innerHTML = `<span class="text-danger">${data.message}</span>`;
-      }
-    } catch (error) {
-      result.innerHTML = `<span class="text-danger">送出失敗：${error.message}</span>`;
-      console.error(error);
-    }
-  }
-  async function loadHotKeywords() {
+async function loadHotKeywords() {
   const list = document.getElementById("hotKeywords");
   if (!list) return;
 
@@ -669,40 +604,66 @@
     const data = await fetchJson("api/keywords.php");
     list.innerHTML = "";
 
-    if (!Array.isArray(data) || !data.length) {
-      list.innerHTML = "<li class='text-muted'>目前沒有熱門搜尋</li>";
-      return;
-    }
-
     data.forEach(item => {
-      const keyword =
-        typeof item === "string"
-          ? item
-          : (item.keyword || item.name || item.title || "");
-
+      // 確保拿到字串
+      const keyword = (typeof item === 'string' ? item : (item.keyword || "")).trim();
       if (!keyword) return;
 
       const li = document.createElement("li");
       li.className = "cat-list-item";
+      // 加上 onclick 直接執行跳轉，繞過原本複雜的事件綁定
+      li.innerHTML = `<a href="javascript:void(0)" class="text-decoration-none" style="cursor: pointer;">${keyword}</a>`;
 
-      li.innerHTML = `<a href="#" class="text-decoration-none">${keyword}</a>`;
+      // 在 index.html 的 loadHotKeywords 函式內修改
+li.addEventListener("click", function (e) {
+  e.preventDefault();
+  
+  // ── 強制跳轉規則 ──
+  // ── 修改後的強制跳轉規則 ──
+const mapping = {
+  "音樂": "音樂性社團",
+  "運動": "體能性社團",
+  "舞蹈": "體能性社團",
+  "韓研社": "休閒聯誼性社團"
+};
 
-      li.addEventListener("click", function (e) {
-        e.preventDefault();
-        currentKeyword = keyword;
+// 使用 trim() 去掉關鍵字可能帶有的空格
+const clickedText = keyword.trim(); 
 
-        const input = document.getElementById("search-keyword");
-        if (input) input.value = keyword;
+if (mapping[clickedText]) {
+  currentCategory = mapping[clickedText];
+  
+  // 針對韓研社做特殊處理，確保關鍵字能對應到社團全名
+  if (clickedText === "韓研社") {
+    currentKeyword = "韓國流行文化研究社"; 
+  } else {
+    currentKeyword = ""; // 音樂、運動等類別點擊時，清空關鍵字以顯示該類別所有社團
+  }
+} else {
+  currentCategory = "";
+  currentKeyword = clickedText;
+}
 
-        document.getElementById("searchPopup")?.classList.remove("active");
-        loadClubs(currentCategory, currentKeyword);
-        document.getElementById("club-section")?.scrollIntoView({ behavior: "smooth" });
-      });
+  // 更新搜尋框顯示
+  const input = document.getElementById("search-keyword");
+  if (input) input.value = clickedText;
+
+  // 關閉彈窗
+  const searchPopup = document.getElementById("searchPopup");
+  searchPopup.classList.remove("active");
+  searchPopup.style.display = "none";
+
+  // 執行搜尋
+  loadClubs(currentCategory, currentKeyword);
+  
+  // 捲動到社團列表區塊
+  document.getElementById("club-section")?.scrollIntoView({ behavior: "smooth" });
+});
 
       list.appendChild(li);
     });
   } catch (error) {
-    console.error("熱門關鍵字載入失敗：", error);
+    console.error("載入失敗", error);
   }
 }
 
