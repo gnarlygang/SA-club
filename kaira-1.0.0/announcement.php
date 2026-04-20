@@ -173,7 +173,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             </button>
             
             <div class="btn-back-container">
-                <a href="manager_index.php" class="btn-back">
+                <a href="index.php" class="btn-back">
                     <i class="bi bi-chevron-left"></i> 返回後台首頁
                 </a>
             </div>

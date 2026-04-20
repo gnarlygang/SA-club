@@ -53,6 +53,12 @@
                 <li class="nav-item">
                   <a class="nav-link" href="discuss.php">社團問答區</a>
                 </li>
+
+                <?php if (isset($_SESSION['role']) && $_SESSION['role'] == 4): ?>
+                  <li class="nav-item">
+                    <a class="nav-link" href="announcement.php">公告發佈</a>
+                  </li>
+                <?php endif; ?>
               </ul>
             </div>
           </div>
