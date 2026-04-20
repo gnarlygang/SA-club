@@ -1,13 +1,5 @@
 <?php
-session_start();
-
-$host     = "localhost";
-$dbname   = "sa2026";
-$db_user  = "root";       // 請依實際情況修改
-$db_pass  = "";           // 請依實際情況修改
-
-$error   = "";
-$success = "";
+require_once "api/db.php";
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $input_id  = trim($_POST["user_id"]  ?? "");
