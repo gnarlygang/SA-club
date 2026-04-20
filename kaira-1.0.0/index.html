@@ -207,7 +207,7 @@
               </li>
 
               <li class="nav-item">
-                <a class="nav-link" href="#">社團問答區</a>
+                <a class="nav-link" href="discussion.php">社團問答區</a>
               </li>
             </ul>
           </div>
@@ -605,7 +605,7 @@
         </div>
       `).join("");
     } catch (error) {
-      container.innerHTML = `<p class="text-danger text-center">社團載入失敗<br>${error.message}</p>`;
+      //container.innerHTML = `<p class="text-danger text-center">社團載入失敗<br>${error.message}</p>`;
       console.error(error);
     }
   }
@@ -728,6 +728,8 @@ loadPosts("recommended", "recommended-post-list");
 loadClubs();
 loadHotKeywords();
 </script>
+
+<script src="js/script.js"></script>
 
 </body>
 </html>

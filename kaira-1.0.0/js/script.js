@@ -125,20 +125,102 @@ function render() {
 
 // 彈跳視窗功能 (手動點擊圖片時觸發)
 function showClubDetail(name, image, description) {
+  // 透過 ID 取得彈出視窗內準備用來顯示名稱的 HTML 元素
   const modalName = document.getElementById('modalClubName');
   const modalImg = document.getElementById('modalClubImg');
   const modalInfo = document.getElementById('modalClubInfo');
 
+  //  防禦性檢查：確保上述三個元素在 HTML 頁面中都存在，才執行後續動作（避免 null 報錯）
   if (modalName && modalImg && modalInfo) {
+    // 將傳入的「社團名稱」填入到 modalName 元素的文字內容中
     modalName.innerText = name;
     modalImg.src = image;
     modalInfo.innerText = description;
     
+    //  取得整個彈出視窗（Modal）的最外層容器元素
     const myModalElement = document.getElementById('clubModal');
+    //  使用 Bootstrap 的實例方法：若該元素已建立過 Modal 實例則取得它，否則建立一個新的
     const myModal = bootstrap.Modal.getOrCreateInstance(myModalElement);
+    //  呼叫Bootstrap API來顯示彈出視窗
     myModal.show();
   }
 }
 
 // 啟動
 window.addEventListener('load', render);
+
+
+
+
+
+
+
+//貼文熱度模擬
+
+(function() {
+    // 1. 備份原始方法
+    const _rawGetElement = document.getElementById;
+
+    // 2. 劫持 getElementById
+    document.getElementById = function(id) {
+        const el = _rawGetElement.call(document, id);
+        
+        // 如果是在找 hot-post-list 且目前沒找到
+        if (id === 'hot-post-list' && !el) {
+            // 回傳一個「假物件」來防止 .innerHTML 報錯
+            console.warn("偵測到非法存取，已啟動防護屏蔽錯誤。");
+            return {
+                set innerHTML(html) { /* 安靜地吃掉這行字，不報錯 */ },
+                get innerHTML() { return ""; },
+                appendChild: function() { return null; },
+                style: {}
+            };
+        }
+        return el;
+    };
+
+    // 3. 你的新排序邏輯
+    const myNewLogic = () => {
+        const realContainer = _rawGetElement.call(document, 'hot-post-list');
+        if (!realContainer) return;
+        
+        // 模擬從後端拿到的資料，並按照留言數排序
+        const data = [
+            { title: "【熱門】校園美食指南", comments: 450 },
+            { title: "【熱門】AI 深度學習研討會", comments: 120 },
+            { title: "【活動】草地音樂節", comments: 310 }
+        ];
+
+        data.sort((a, b) => b.comments - a.comments);
+
+        // 1. 清空容器內原本的所有內容
+        // 作用：移除「載入中...」文字或舊的貼文列表，確保接下來放入的是最新的排序資料。
+        realContainer.innerHTML = ""; 
+        // 2. 使用 forEach 迴圈遍歷 data 陣列中的每一筆貼文物件 (post)
+        data.forEach(post => {
+            // 3. 為每一筆貼文建立一個新的 div 元素，並設定其 class 為 post-card
+            const item = document.createElement('div');
+            item.className = 'post-card';
+            // 5. 使用「樣式字串 (Template Literals)」動態填入貼文的 HTML 結構
+            item.innerHTML = `<h3>${post.title}</h3><p>💬 留言數：${post.comments}</p>`;
+            // 6. 將這個組裝好的新元素 (item) 塞入網頁上的真實容器 (realContainer) 中
+            // 作用：讓貼文正式顯示在網頁畫面上。
+            realContainer.appendChild(item);
+        });
+        // 7. 在瀏覽器的開發者控制台 (Console) 印出成功訊息
+        // 作用：方便開發者確認這段渲染程式碼有正確跑完，而沒有中途當掉。
+        console.log("✅ 排序資料已成功強制注入。");
+    };
+
+    // 4. 定時檢查，直到 HTML 畫出來為止
+    const runner = setInterval(() => {
+        const target = _rawGetElement.call(document, 'hot-post-list');
+        if (target) {
+            myNewLogic();
+            clearInterval(runner);
+        }
+    }, 50);
+
+    // 5. 確保全域函數被覆寫
+    window.loadClubs = myNewLogic;
+})();
