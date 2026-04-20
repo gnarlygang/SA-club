@@ -23,9 +23,7 @@
 
             <div class="offcanvas-body">
               <ul class="navbar-nav justify-content-end flex-grow-1 gap-1 gap-md-5 pe-3">
-                <li class="nav-item dropdown">
-                  <a class="nav-link" href="index.php">主頁</a>
-                </li>
+                
 
                 <li class="nav-item dropdown">
                   <a class="nav-link dropdown-toggle" href="#" id="dropdownShop" data-bs-toggle="dropdown"
@@ -53,8 +51,14 @@
                 </li>
 
                 <li class="nav-item">
-                  <a class="nav-link" href="#">社團問答區</a>
+                  <a class="nav-link" href="discuss.php">社團問答區</a>
                 </li>
+
+                <?php if (isset($_SESSION['role']) && $_SESSION['role'] == 4): ?>
+                  <li class="nav-item">
+                    <a class="nav-link" href="announcement.php">公告發佈</a>
+                  </li>
+                <?php endif; ?>
               </ul>
             </div>
           </div>

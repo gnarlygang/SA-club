@@ -1,3 +1,5 @@
+<?php session_start();
+require_once "header.php"; ?>
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -56,7 +58,7 @@
 
     /* 當前選中項目的樣式，使用 !important 確保優先級 */
     .nav-item.active {
-      background-color: #545454 !important;
+      background-color: #2d3a4a !important;
       color: white !important;
     }
 
@@ -93,7 +95,6 @@
 <div class="forum-container">
   
   <nav class="sidebar">
-    /* active 類別表示目前選中的社團類型，會有不同的背景和文字顏色 */
     <a href="#" class="nav-item active">學術性社團</a>
     <a href="#" class="nav-item">休閒聯誼性社團</a>
     <a href="#" class="nav-item">服務性社團</a>
