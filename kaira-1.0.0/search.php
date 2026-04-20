@@ -24,6 +24,20 @@ require_once "header.php"; ?>
       font-size: 15px !important;
       line-height: 1.5 !important;
     }
+    .hot-keyword-tag {
+      display: inline-block;
+      padding: 8px 14px;
+      background: #f2f2f2;
+      border-radius: 999px;
+      text-decoration: none;
+      color: #333;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+    .hot-keyword-tag:hover {
+      background: #e0e0e0;
+      color: #000;
+    }
   </style>
 </head>
 <body>
@@ -49,6 +63,14 @@ require_once "header.php"; ?>
     </div>
   </div>
 
+  <!-- 熱門搜尋關鍵字 -->
+  <div class="mb-4">
+    <h6 class="text-muted mb-2">熱門搜尋：</h6>
+    <ul class="list-unstyled d-flex flex-wrap gap-2 mb-0" id="hotKeywords">
+      <li class="text-muted" style="font-size:14px;">載入中...</li>
+    </ul>
+  </div>
+
   <!-- 結果數量 -->
   <h6 id="result-title" class="mb-3 text-muted"></h6>
 
@@ -72,6 +94,12 @@ require_once "header.php"; ?>
       </button>
     </form>
 
+    <!-- 彈窗內熱門關鍵字 -->
+    <h5 class="mt-4">熱門搜尋</h5>
+    <ul class="list-unstyled d-flex flex-wrap gap-2 mb-0" id="popupHotKeywords">
+      <li class="text-muted" style="font-size:14px;">載入中...</li>
+    </ul>
+
   </div>
 </div>
 
@@ -84,6 +112,7 @@ require_once "header.php"; ?>
     document.getElementById("page-search-input").value = currentKeyword;
   }
 
+  // ── 載入社團列表 ──────────────────────────────────────────
   async function loadClubs(keyword = "") {
     const container = document.getElementById("club-list");
     const title     = document.getElementById("result-title");
@@ -123,6 +152,40 @@ require_once "header.php"; ?>
     }
   }
 
+  // ── 載入熱門關鍵字（通用，帶目標 list ID）────────────────
+  async function loadHotKeywords(listId) {
+    const list = document.getElementById(listId);
+    if (!list) return;
+
+    try {
+      const res  = await fetch("api/keywords.php");
+      const data = await res.json();
+      list.innerHTML = "";
+
+      if (!Array.isArray(data) || !data.length) {
+        list.innerHTML = "<li class='text-muted'>目前沒有熱門搜尋</li>";
+        return;
+      }
+
+      data.forEach(item => {
+        const keyword = typeof item === "string" ? item : (item.keyword || item.name || "");
+        if (!keyword) return;
+
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <a href="search.php?keyword=${encodeURIComponent(keyword)}" class="hot-keyword-tag">
+            ${keyword}
+          </a>`;
+        list.appendChild(li);
+      });
+
+    } catch (err) {
+      list.innerHTML = "<li class='text-muted'>關鍵字載入失敗</li>";
+      console.error("熱門關鍵字載入失敗：", err);
+    }
+  }
+
+  // ── 頁面搜尋表單送出 ──────────────────────────────────────
   document.getElementById("page-search-form").addEventListener("submit", function(e) {
     e.preventDefault();
     currentKeyword = document.getElementById("page-search-input").value.trim();
@@ -133,14 +196,15 @@ require_once "header.php"; ?>
     loadClubs(currentKeyword);
   });
 
+  // ── Header 搜尋彈窗開關 ───────────────────────────────────
   document.getElementById("openSearch")?.addEventListener("click", function(e) {
-  e.preventDefault();
-  const popup = document.getElementById("searchPopup");
-  popup.style.display = popup.style.display === "block" ? "none" : "block";
-  if (popup.style.display === "block") {
-    document.getElementById("header-search-keyword")?.focus();
-  }
-});
+    e.preventDefault();
+    const popup = document.getElementById("searchPopup");
+    popup.style.display = popup.style.display === "block" ? "none" : "block";
+    if (popup.style.display === "block") {
+      document.getElementById("header-search-keyword")?.focus();
+    }
+  });
 
   document.getElementById("closeSearchPopup")?.addEventListener("click", function() {
     document.getElementById("searchPopup").style.display = "none";
@@ -150,6 +214,7 @@ require_once "header.php"; ?>
     if (e.target === this) this.style.display = "none";
   });
 
+  // ── 彈窗搜尋表單送出 ──────────────────────────────────────
   document.getElementById("header-search-form")?.addEventListener("submit", function(e) {
     e.preventDefault();
     const kw = document.getElementById("header-search-keyword").value.trim();
@@ -158,7 +223,10 @@ require_once "header.php"; ?>
     }
   });
 
+  // ── 初始化 ────────────────────────────────────────────────
   loadClubs(currentKeyword);
+  loadHotKeywords("hotKeywords");       // 頁面上方熱門標籤
+  loadHotKeywords("popupHotKeywords");  // 彈窗內熱門標籤
 </script>
 
 </body>

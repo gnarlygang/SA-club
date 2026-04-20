@@ -1,29 +1,16 @@
 <?php
-require_once "../db.php";
+// api/clubs.php
+require_once "../db_connect.php"; // 確保你有連線到資料庫
 
-header("Content-Type: application/json; charset=utf-8");
+$keyword = isset($_GET['keyword']) ? $_GET['keyword'] : '';
 
-$keyword  = $_GET['keyword']  ?? '';
-$category = $_GET['category'] ?? '';
-
-$sql    = "SELECT * FROM clubs WHERE 1=1";
-$params = [];
-
-if ($keyword !== '') {
-    $sql     .= " AND (name LIKE :kw1 OR description LIKE :kw2 OR category LIKE :kw3)";
-    $like     = "%{$keyword}%";
-    $params[':kw1'] = $like;
-    $params[':kw2'] = $like;
-    $params[':kw3'] = $like;
-}
-
-if ($category !== '') {
-    $sql .= " AND category = :category";
-    $params[':category'] = $category;
-}
-
+// 準備 SQL：比對社團名稱 (name)、類別 (category) 或 描述 (description)
+$sql = "SELECT * FROM clubs WHERE name LIKE :kw OR category LIKE :kw OR description LIKE :kw";
 $stmt = $pdo->prepare($sql);
-$stmt->execute($params);
+$searchTerm = "%$keyword%"; // 前後加上 % 進行模糊匹配
+$stmt->execute(['kw' => $searchTerm]);
 $clubs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-echo json_encode($clubs, JSON_UNESCAPED_UNICODE);
+header('Content-Type: application/json');
+echo json_encode($clubs);
+?>
