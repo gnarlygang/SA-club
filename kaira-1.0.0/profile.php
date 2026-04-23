@@ -6,7 +6,7 @@ require_once "header.php";
 $host    = "localhost";
 $dbname  = "sa2026";
 $db_user = "root";
-$db_pass = "";
+$db_pass = "12345678";
 
 try {
     $pdo = new PDO(

@@ -29,12 +29,12 @@
                   <a class="nav-link dropdown-toggle" href="#" id="dropdownShop" data-bs-toggle="dropdown"
                     aria-haspopup="true" aria-expanded="false">社團介紹</a>
                   <ul class="dropdown-menu list-unstyled" aria-labelledby="dropdownShop">
-                    <a href="academic.php?type=學術性社團" class="btn btn-outline-white" target="_blank">學術性社團</a>
-                    <a href="academic.php?type=休閒聯誼性社團" class="btn btn-outline-white" target="_blank">休閒聯誼性社團</a>
-                    <a href="academic.php?type=服務性社團" class="btn btn-outline-white" target="_blank">服務性社團</a>
-                    <a href="academic.php?type=體能性社團" class="btn btn-outline-white" target="_blank">體能性社團</a>
-                    <a href="academic.php?type=藝術性社團" class="btn btn-outline-white" target="_blank">藝術性社團</a>
-                    <a href="academic.php?type=音樂性社團" class="btn btn-outline-white" target="_blank">音樂性社團</a>
+                    <a href="academic.php?type=學術性社團" class="btn btn-outline-white" >學術性社團</a>
+                    <a href="academic.php?type=休閒聯誼性社團" class="btn btn-outline-white" >休閒聯誼性社團</a>
+                    <a href="academic.php?type=服務性社團" class="btn btn-outline-white">服務性社團</a>
+                    <a href="academic.php?type=體能性社團" class="btn btn-outline-white" >體能性社團</a>
+                    <a href="academic.php?type=藝術性社團" class="btn btn-outline-white">藝術性社團</a>
+                    <a href="academic.php?type=音樂性社團" class="btn btn-outline-white">音樂性社團</a>
                   </ul>
                 </li>
 

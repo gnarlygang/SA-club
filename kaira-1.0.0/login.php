@@ -4,7 +4,7 @@ session_start();
 $host     = "localhost";
 $dbname   = "sa2026";
 $db_user  = "root";       // 請依實際情況修改
-$db_pass  = "";           // 請依實際情況修改
+$db_pass  = "12345678";           // 請依實際情況修改
 
 $error   = "";
 $success = "";
