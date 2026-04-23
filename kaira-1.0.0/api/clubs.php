@@ -3,27 +3,26 @@ require_once "db.php";
 
 header("Content-Type: application/json; charset=utf-8");
 
-$keyword  = $_GET['keyword']  ?? '';
-$category = $_GET['category'] ?? '';
+// 取得關鍵字
+$keyword = $_GET['keyword'] ?? '';
 
-$sql    = "SELECT * FROM clubs WHERE 1=1";
-$params = [];
-
-if ($keyword !== '') {
-    $sql     .= " AND (name LIKE :kw1 OR description LIKE :kw2 OR category LIKE :kw3)";
-    $like     = "%{$keyword}%";
-    $params[':kw1'] = $like;
-    $params[':kw2'] = $like;
-    $params[':kw3'] = $like;
-}
-
-if ($category !== '') {
-    $sql .= " AND category = :category";
-    $params[':category'] = $category;
-}
+// SQL 搜尋
+$sql = "SELECT * FROM clubs 
+        WHERE name LIKE :kw 
+        OR category LIKE :kw 
+        OR description LIKE :kw";
 
 $stmt = $pdo->prepare($sql);
-$stmt->execute($params);
+
+// 模糊搜尋
+$searchTerm = "%{$keyword}%";
+
+// 執行查詢
+$stmt->execute(['kw' => $searchTerm]);
+
+// 取得結果（這裡一定要 FETCH_ASSOC）
 $clubs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+// 回傳 JSON
 echo json_encode($clubs, JSON_UNESCAPED_UNICODE);
+?>

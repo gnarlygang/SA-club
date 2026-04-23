@@ -495,43 +495,36 @@ require_once "header.php"; ?>
       }
     }
 
-    async function loadHotKeywords() {
-      const list = document.getElementById("hotKeywords");
-      if (!list) return;
+    // index.php 內的 loadHotKeywords 函數
+async function loadHotKeywords() {
+  const list = document.getElementById("hotKeywords");
+  if (!list) return;
 
-      try {
-        const data = await fetchJson("api/keywords.php");
-        list.innerHTML = "";
+  try {
+    const data = await fetchJson("api/keywords.php");
+    list.innerHTML = "";
 
-        if (!Array.isArray(data) || !data.length) {
-          list.innerHTML = "<li class='text-muted'>目前沒有熱門搜尋</li>";
-          return;
-        }
+    data.forEach(item => {
+      const kw = item.keyword; // 抓取資料庫截圖中的 keyword 欄位
+      if (!kw) return;
 
-        data.forEach(item => {
-          const keyword =
-            typeof item === "string"
-              ? item
-              : (item.keyword || item.name || item.title || "");
+      const li = document.createElement("li");
+      li.className = "cat-list-item";
+      li.innerHTML = `<a href="#" class="text-decoration-none">${kw}</a>`;
 
-          if (!keyword) return;
+      // 監聽點擊事件
+      li.addEventListener("click", function (e) {
+        e.preventDefault();
+        // 跳轉到搜尋頁面，並將關鍵字編碼後放在網址
+        window.location.href = `search.php?keyword=${encodeURIComponent(kw)}`;
+      });
 
-          const li = document.createElement("li");
-          li.className = "cat-list-item";
-          li.innerHTML = `<a href="#" class="text-decoration-none">${keyword}</a>`;
-
-          li.addEventListener("click", function (e) {
-  e.preventDefault();
-  window.location.href = `search.php?keyword=${encodeURIComponent(keyword)}`;
-});
-
-          list.appendChild(li);
-        });
-      } catch (error) {
-        console.error("熱門關鍵字載入失敗：", error);
-      }
-    }
-
+      list.appendChild(li);
+    });
+  } catch (error) {
+    console.error("熱門關鍵字載入失敗：", error);
+  }
+}
     document.getElementById("feedback-form")?.addEventListener("submit", function (e) {
       e.preventDefault();
       const email = this.email.value.trim();
