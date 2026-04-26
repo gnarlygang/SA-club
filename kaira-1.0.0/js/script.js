@@ -1,152 +1,131 @@
-// 1. 統一資料格式 (確保每個物件的 key 名稱都一樣)
-const clubs = [
-  { 
-    id: 1,
-    name: "輔大熱舞社", 
-    category: "藝術性社團", 
-    image: "https://images.unsplash.com/photo-1547153760-18fc86324498?auto=format&fit=crop&w=800&q=80", 
-    description: "喜歡跳舞與表演的同學可以一起交流、練舞與參與成果展。" 
-  },
-  { 
-    id: 2,
-    name: "輔大登山社", 
-    category: "體能性社團", 
-    image: "https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&w=800&q=80", 
-    description: "透過登山活動培養體能、合作與戶外探索能力。" 
-  },
-  { 
-    id: 3,
-    name: "輔大國樂社", 
-    category: "音樂性社團", 
-    image: "https://images.unsplash.com/photo-1507838153414-b4b713384a76?auto=format&fit=crop&w=800&q=80", 
-    description: "傳統音樂演奏與交流，歡迎對國樂有興趣的同學加入。" 
-  },
-  { 
-    id: 4,
-    name: "輔大韓研社", 
-    category: "學術性社團", 
-    image: "https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=800&q=80", 
-    description: "認識韓國 culture、語言與流行趨勢，舉辦講座與交流活動。" 
-  },
-  { 
-    id: 5,
-    name: "輔大志工服務隊", 
-    category: "服務性社團", 
-    image: "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=800&q=80", 
-    description: "參與偏鄉、公益與陪伴活動，累積服務學習經驗。" 
-  },
-  { 
-    id: 6,
-    name: "輔大桌遊社", 
-    category: "休閒聯誼性社團", 
-    image: "https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?auto=format&fit=crop&w=800&q=80", 
-    description: "用桌遊交流認識朋友，培養策略思考與互動默契。" 
-  }
-];
+// 全域變數，用來存放從資料庫撈回來的社團
+let clubs = []; 
 
-function render() {
+/**
+ * 渲染頁面主要函式
+ */
+async function render() {
   const clubList = document.getElementById('club-list');
-  if (!clubList) return;
+  if (!clubList) return; // 這裡在 function 內，是合法的
 
-  const urlParams = new URLSearchParams(window.location.search);
-  let typeFilter = urlParams.get('type');
-  let nameFilter = urlParams.get('name');
-
-  if (typeFilter) typeFilter = decodeURIComponent(typeFilter);
-  if (nameFilter) nameFilter = decodeURIComponent(nameFilter);
-
-  // --- 新增：按鈕隱藏邏輯 ---
-  // 找出所有的分類按鈕
-  const allCategoryBtns = document.querySelectorAll('.category-filter');
-
-  allCategoryBtns.forEach(btn => {
-    // 1. 先恢復所有按鈕的高亮狀態 (變成空心)
-    btn.classList.remove('btn-dark', 'text-white');
-    btn.classList.add('btn-outline-dark');
-
-    // 2. 判斷是否隱藏：
-    // 如果網址有 type (例如「學術性社團」)，且按鈕的 ID 不是該 type，也不是「全部」按鈕，就隱藏它
-    if (typeFilter) {
-      const isSpecificClubBtn = btn.id.startsWith('btn-'); // 辨識是否為特定社團按鈕
-      
-      // 如果按鈕 ID 不符合目前的 type，也不是「全部」按鈕，就隱藏
-      // 這裡假設你的按鈕 ID 命名規則是 btn-學術性社團, btn-輔大韓研社 等
-      if (btn.id !== 'btn-all' && btn.id !== `btn-${typeFilter}` && !btn.id.includes('輔大')) {
-         btn.style.display = 'none'; 
-      } else {
-         btn.style.display = 'inline-block'; // 符合的則顯示
-      }
-    } else {
-      // 如果沒有 type 參數 (在首頁)，顯示所有按鈕
-      btn.style.display = 'inline-block';
+  try {
+    // 1. 取得資料
+    const response = await fetch('api/get_club.php');
+    
+    if (!response.ok) {
+        throw new Error(`HTTP 錯誤！狀態碼: ${response.status}`);
     }
-  });
 
-  // --- 設定高亮 (維持原有邏輯) ---
-  let targetId = "btn-all";
-  if (nameFilter) {
-    targetId = `btn-${nameFilter}`;
-  } else if (typeFilter) {
-    targetId = `btn-${typeFilter}`;
-  }
-  const activeBtn = document.getElementById(targetId);
-  if (activeBtn) activeBtn.classList.replace('btn-outline-dark', 'btn-dark');
+    const text = await response.text();
+    if (!text.trim()) {
+        throw new Error("PHP 回傳了空內容");
+    }
 
+    // 2. 解析 JSON
+    try {
+        clubs = JSON.parse(text);
+    } catch (e) {
+        console.error("JSON 解析失敗，原始內容為:", text);
+        throw new Error("資料格式錯誤，無法解析為 JSON");
+    }
 
-  // --- 過濾資料與渲染 (維持原有邏輯) ---
-  let filteredClubs = clubs;
-  if (nameFilter) {
-    filteredClubs = clubs.filter(club => club.name === nameFilter);
-  } else if (typeFilter) {
-    filteredClubs = clubs.filter(club => club.category === typeFilter);
-  }
+    // 3. 處理網址參數
+    const urlParams = new URLSearchParams(window.location.search);
+    let typeFilter = urlParams.get('type');
+    let nameFilter = urlParams.get('name');
 
-  clubList.innerHTML = ''; 
-  if (filteredClubs.length === 0) {
-    clubList.innerHTML = '<div class="col-12 text-center mt-5"><h5>找不到相關社團資料</h5></div>';
-    return;
-  }
+    if (typeFilter) typeFilter = decodeURIComponent(typeFilter);
+    if (nameFilter) nameFilter = decodeURIComponent(nameFilter);
 
-  filteredClubs.forEach(club => {
-    const clubHtml = `
-      <div class="col-md-4">
-        <div class="card h-100 shadow-sm" style="cursor: pointer;" onclick="showClubDetail('${club.name}', '${club.image}', '${club.description}')">
-          <img src="${club.image}" class="card-img-top" alt="${club.name}" style="height: 200px; object-fit: cover;">
-          <div class="card-body">
-            <h5 class="card-title">${club.name}</h5>
-            <span class="badge bg-secondary">${club.category}</span>
+    // 4. 分類按鈕顯示/隱藏邏輯
+    const allCategoryBtns = document.querySelectorAll('.category-filter');
+    allCategoryBtns.forEach(btn => {
+      btn.classList.remove('btn-dark', 'text-white');
+      btn.classList.add('btn-outline-dark');
+
+      if (typeFilter) {
+        // 如果有過濾類型，隱藏不相關的按鈕
+        if (btn.id !== 'btn-all' && btn.id !== `btn-${typeFilter}` && !btn.id.includes('輔大')) {
+           btn.style.display = 'none'; 
+        } else {
+           btn.style.display = 'inline-block';
+        }
+      } else {
+        btn.style.display = 'inline-block';
+      }
+    });
+
+    // 設定目前選中按鈕的高亮
+    let targetId = "btn-all";
+    if (nameFilter) {
+      targetId = `btn-${nameFilter}`;
+    } else if (typeFilter) {
+      targetId = `btn-${typeFilter}`;
+    }
+    const activeBtn = document.getElementById(targetId);
+    if (activeBtn) activeBtn.classList.replace('btn-outline-dark', 'btn-dark');
+
+    // 5. 過濾資料
+    let filteredClubs = clubs;
+    if (nameFilter) {
+      filteredClubs = clubs.filter(club => club.name === nameFilter);
+    } else if (typeFilter) {
+      filteredClubs = clubs.filter(club => club.category === typeFilter);
+    }
+
+    // 6. 渲染畫面
+    clubList.innerHTML = ''; 
+    if (filteredClubs.length === 0) {
+      clubList.innerHTML = '<div class="col-12 text-center mt-5"><h5>找不到相關社團資料</h5></div>';
+      return; 
+    }
+
+    filteredClubs.forEach(club => {
+      // 處理資料庫中可能缺失的圖片 (使用預設圖)
+      const displayImg = club.image || 'https://via.placeholder.com/800x600?text=No+Image';
+      
+      // 使用反引號避免簡介內的引號造成 HTML 斷裂
+      const clubHtml = `
+        <div class="col-md-4 mb-4">
+          <div class="card h-100 shadow-sm" style="cursor: pointer;" 
+               onclick="showClubDetail(\`${club.name}\`, \`${displayImg}\`, \`${club.description.replace(/`/g, '\\`').replace(/\n/g, '<br>')}\`)">
+            <img src="${displayImg}" class="card-img-top" alt="${club.name}" style="height: 200px; object-fit: cover;">
+            <div class="card-body">
+              <h5 class="card-title">${club.name}</h5>
+              <span class="badge bg-secondary">${club.category}</span>
+            </div>
           </div>
         </div>
-      </div>
-    `;
-    clubList.innerHTML += clubHtml;
-  });
+      `;
+      clubList.innerHTML += clubHtml;
+    });
+
+  } catch (error) {
+    console.error("渲染過程發生錯誤:", error);
+    clubList.innerHTML = `<div class="col-12 text-center mt-5"><h5>系統提示: ${error.message}</h5></div>`;
+  }
 }
 
-// 彈跳視窗功能 (手動點擊圖片時觸發)
+/**
+ * 彈跳視窗功能
+ */
 function showClubDetail(name, image, description) {
-  // 透過 ID 取得彈出視窗內準備用來顯示名稱的 HTML 元素
   const modalName = document.getElementById('modalClubName');
   const modalImg = document.getElementById('modalClubImg');
   const modalInfo = document.getElementById('modalClubInfo');
 
-  //  防禦性檢查：確保上述三個元素在 HTML 頁面中都存在，才執行後續動作（避免 null 報錯）
   if (modalName && modalImg && modalInfo) {
-    // 將傳入的「社團名稱」填入到 modalName 元素的文字內容中
     modalName.innerText = name;
     modalImg.src = image;
-    modalInfo.innerText = description;
+    modalInfo.innerHTML = description; // 改用 innerHTML 以支援換行
     
-    //  取得整個彈出視窗（Modal）的最外層容器元素
     const myModalElement = document.getElementById('clubModal');
-    //  使用 Bootstrap 的實例方法：若該元素已建立過 Modal 實例則取得它，否則建立一個新的
     const myModal = bootstrap.Modal.getOrCreateInstance(myModalElement);
-    //  呼叫Bootstrap API來顯示彈出視窗
     myModal.show();
   }
 }
 
-// 啟動
+// 監聽網頁載入完成後執行
 window.addEventListener('load', render);
 
 
