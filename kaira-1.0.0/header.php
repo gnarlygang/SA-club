@@ -70,12 +70,10 @@ $role = $_SESSION['role'] ?? 0;
       <a href="login.php" class="btn-login">登入</a>
 
     <?php elseif ($role == 3): ?>
-      <a href="subscriptions.php" class="btn-login">訂閱</a>
       <a href="profile.php" class="btn-login">個人</a>
       <a href="logout.php" class="btn-login">登出</a>
 
     <?php elseif ($role == 2): ?>
-      <a href="profile.php" class="btn-login">社團資料</a>
       <a href="logout.php" class="btn-login">登出</a>
 
     <?php elseif ($role == 4): ?>
