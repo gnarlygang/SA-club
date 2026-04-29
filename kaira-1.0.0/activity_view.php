@@ -1,21 +1,13 @@
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-$host    = "localhost";
-$dbname  = "sa2026";
-$db_user = "root";
-$db_pass = "";
+require_once __DIR__ . "/api/db.php";
 
 $activity_id = isset($_GET["id"]) ? (int)$_GET["id"] : 0;
 
 try {
-    $pdo = new PDO(
-        "mysql:host=$host;dbname=$dbname;charset=utf8mb4",
-        $db_user,
-        $db_pass,
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-    );
-
     $stmt = $pdo->prepare("
         SELECT a.*, u.username, u.nickname
         FROM activities a
@@ -32,10 +24,9 @@ try {
     }
 
 } catch (PDOException $e) {
-    die("資料庫連線失敗：" . $e->getMessage());
+    die("資料庫查詢失敗：" . $e->getMessage());
 }
 
-// 時間格式化
 function fmt_datetime($dt) {
     if (!$dt) return null;
     return date("Y 年 m 月 d 日 H:i", strtotime($dt));
@@ -46,7 +37,6 @@ function fmt_date($d) {
     return date("Y 年 m 月 d 日", strtotime($d));
 }
 
-// 是否已截止報名
 $is_deadline_passed = strtotime($activity["signup_deadline"]) < strtotime(date("Y-m-d"));
 
 require_once "header.php";
@@ -97,7 +87,6 @@ require_once "header.php";
       overflow: hidden;
     }
 
-    /* ── Header banner ── */
     .view-card-header {
       background: linear-gradient(135deg, #2d3a4a 0%, #3d5268 100%);
       color: #fff;
@@ -132,10 +121,8 @@ require_once "header.php";
       gap: 6px;
     }
 
-    /* ── Body ── */
     .view-card-body { padding: 40px 48px 48px; }
 
-    /* ── Info grid ── */
     .info-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -156,7 +143,6 @@ require_once "header.php";
     .info-cell:nth-child(even) { border-right: none; }
     .info-cell:nth-last-child(-n+2) { border-bottom: none; }
 
-    /* If odd number of cells, last cell spans full width */
     .info-cell.full-width {
       grid-column: span 2;
       border-right: none;
@@ -184,7 +170,6 @@ require_once "header.php";
       color: #c0392b;
     }
 
-    /* ── Description ── */
     .desc-section {
       margin-bottom: 36px;
     }
@@ -212,7 +197,6 @@ require_once "header.php";
       border: 1px solid var(--border);
     }
 
-    /* ── Signup button ── */
     .signup-section {
       margin-top: 8px;
     }
@@ -269,7 +253,6 @@ require_once "header.php";
 
     .back-link:hover { color: #3a3a3a; }
 
-    /* ── Footer ── */
     footer {
       background-color: var(--footer-bg);
       color: #333;
@@ -294,7 +277,6 @@ require_once "header.php";
 <div class="view-wrapper">
   <div class="view-card">
 
-    <!-- 活動標題 banner -->
     <div class="view-card-header">
       <div class="activity-category">
         <i class="bi bi-megaphone me-1"></i>社團活動
@@ -308,7 +290,6 @@ require_once "header.php";
 
     <div class="view-card-body">
 
-      <!-- 活動資訊格狀 -->
       <div class="info-grid">
 
         <div class="info-cell">
@@ -352,7 +333,6 @@ require_once "header.php";
 
       </div>
 
-      <!-- 活動簡介 -->
       <div class="desc-section">
         <div class="desc-label">
           <i class="bi bi-text-paragraph"></i>活動簡介
@@ -360,7 +340,6 @@ require_once "header.php";
         <div class="desc-content"><?= htmlspecialchars($activity["description"]) ?></div>
       </div>
 
-      <!-- 報名按鈕 -->
       <div class="signup-section">
         <?php if ($is_deadline_passed): ?>
           <a href="#" class="btn-signup disabled-btn">
@@ -383,6 +362,7 @@ require_once "header.php";
 </div>
 
 <?php require "footer.php"; ?>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
