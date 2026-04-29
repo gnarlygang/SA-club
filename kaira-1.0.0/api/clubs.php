@@ -1,16 +1,28 @@
 <?php
-// api/clubs.php
-require_once "../db_connect.php"; // 確保你有連線到資料庫
+require_once "db.php";
 
-$keyword = isset($_GET['keyword']) ? $_GET['keyword'] : '';
+header("Content-Type: application/json; charset=utf-8");
 
-// 準備 SQL：比對社團名稱 (name)、類別 (category) 或 描述 (description)
-$sql = "SELECT * FROM clubs WHERE name LIKE :kw OR category LIKE :kw OR description LIKE :kw";
+// 取得關鍵字
+$keyword = $_GET['keyword'] ?? '';
+
+// SQL 搜尋
+$sql = "SELECT * FROM clubs 
+        WHERE name LIKE :kw 
+        OR category LIKE :kw 
+        OR description LIKE :kw";
+
 $stmt = $pdo->prepare($sql);
-$searchTerm = "%$keyword%"; // 前後加上 % 進行模糊匹配
+
+// 模糊搜尋
+$searchTerm = "%{$keyword}%";
+
+// 執行查詢
 $stmt->execute(['kw' => $searchTerm]);
+
+// 取得結果（這裡一定要 FETCH_ASSOC）
 $clubs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-header('Content-Type: application/json');
-echo json_encode($clubs);
+// 回傳 JSON
+echo json_encode($clubs, JSON_UNESCAPED_UNICODE);
 ?>
