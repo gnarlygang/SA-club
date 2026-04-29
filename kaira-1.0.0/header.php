@@ -25,14 +25,14 @@ $role = $_SESSION['role'] ?? 0;
       <li><a href="index.php">首頁</a></li>
       <li><a href="clubs.php">社團介紹</a></li>
       <li><a href="activities.php">活動</a></li>
-      <li><a href="discussion.php">論壇</a></li>
+      <li><a href="forum.php">論壇</a></li>
 
     <!-- ===== 學生 ===== -->
     <?php elseif ($role == 3): ?>
       <li><a href="index.php">首頁</a></li>
       <li><a href="clubs.php">社團介紹</a></li>
       <li><a href="activities.php">活動</a></li>
-      <li><a href="discussion.php">論壇</a></li>
+      <li><a href="forum.php">論壇</a></li>
 
     <!-- ===== 社團 ===== -->
     <?php elseif ($role == 2): ?>
@@ -40,21 +40,21 @@ $role = $_SESSION['role'] ?? 0;
       <li><a href="edit_club.php">社團後台</a></li>
       <li><a href="activity_create.php">發布活動</a></li>
       <li><a href="activity_list.php">活動管理</a></li>
-      <li><a href="discussion.php">論壇</a></li>
+      <li><a href="forum.php">論壇</a></li>
 
     <!-- ===== 管理員 ===== -->
     <?php elseif ($role == 4): ?>
       <li><a href="index.php">首頁</a></li>
       <li><a href="announcement.php">發布公告</a></li>
       <li><a href="manager_index.php">管理後台</a></li>
-      <li><a href="discussion.php">論壇</a></li>
+      <li><a href="forum.php">論壇</a></li>
 
     <!-- ===== 老師 ===== -->
     <?php elseif ($role == 1): ?>
       <li><a href="index.php">首頁</a></li>
       <li><a href="clubs.php">社團介紹</a></li>
       <li><a href="activities.php">活動</a></li>
-      <li><a href="discussion.php">論壇</a></li>
+      <li><a href="forum.php">論壇</a></li>
     <?php endif; ?>
 
   </ul>
@@ -79,12 +79,8 @@ $role = $_SESSION['role'] ?? 0;
       <a href="logout.php" class="btn-login">登出</a>
 
     <?php elseif ($role == 4): ?>
-      <a href="manager_index.php" class="btn-login">後台</a>
       <a href="logout.php" class="btn-login">登出</a>
 
-    <?php elseif ($role == 1): ?>
-      <a href="profile.php" class="btn-login">個人</a>
-      <a href="logout.php" class="btn-login">登出</a>
     <?php endif; ?>
 
   </div>
