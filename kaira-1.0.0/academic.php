@@ -27,12 +27,12 @@ require_once "header.php"; ?>
   <div class="category-btns mb-3">
   <a href="academic.php" class="btn btn-outline-dark category-filter" id="btn-all">全部</a>
   
-  <a href="academic.php?name=輔大韓研社" class="btn btn-outline-dark category-filter" id="btn-學術性社團">學術性社團</a>
-  <a href="academic.php?name=輔大桌遊社" class="btn btn-outline-dark category-filter" id="btn-休閒聯誼性社團">休閒聯誼性社團</a>
-  <a href="academic.php?name=輔大志工服務隊" class="btn btn-outline-dark category-filter" id="btn-服務性社團">服務性社團</a>
-  <a href="academic.php?name=輔大登山社" class="btn btn-outline-dark category-filter" id="btn-體能性社團">體能性社團</a>
-  <a href="academic.php?name=輔大熱舞社" class="btn btn-outline-dark category-filter" id="btn-藝術性社團">藝術性社團</a>
-  <a href="academic.php?name=輔大國樂社" class="btn btn-outline-dark category-filter" id="btn-音樂性社團">音樂性社團</a>
+  <a href="academic.php?type=學術性社團" class="btn btn-outline-dark category-filter" id="btn-學術性社團">學術性社團</a>
+  <a href="academic.php?type=休閒聯誼性社團" class="btn btn-outline-dark category-filter" id="btn-休閒聯誼性社團">休閒聯誼性社團</a>
+  <a href="academic.php?type=服務性社團" class="btn btn-outline-dark category-filter" id="btn-服務性社團">服務性社團</a>
+  <a href="academic.php?type=體能性社團" class="btn btn-outline-dark category-filter" id="btn-體能性社團">體能性社團</a>
+  <a href="academic.php?type=藝術性社團" class="btn btn-outline-dark category-filter" id="btn-藝術性社團">藝術性社團</a>
+  <a href="academic.php?type=音樂性社團" class="btn btn-outline-dark category-filter" id="btn-音樂性社團">音樂性社團</a>
 </div>
       </div>
 
