@@ -26,7 +26,7 @@
                 
 
                 <li class="nav-item dropdown">
-                  <a class="nav-link dropdown-toggle" href="#" id="dropdownShop" data-bs-toggle="dropdown"
+                  <a class="nav-link dropdown-toggle" href="academic.php" id="dropdownShop" data-bs-toggle="dropdown"
                     aria-haspopup="true" aria-expanded="false">社團介紹</a>
                   <ul class="dropdown-menu list-unstyled" aria-labelledby="dropdownShop">
                     <a href="academic.php?type=學術性社團" class="btn btn-outline-white" >學術性社團</a>
@@ -38,12 +38,12 @@
                   </ul>
                 </li>
 
-                <li class="nav-item dropdown">
-                  <a class="nav-link" href="#">訂閱</a>
+                <li class="nav-item">
+                   <a class="nav-link" href="subscriptions.php">訂閱</a>
                 </li>
 
-                <li class="nav-item dropdown">
-                  <a class="nav-link" href="#">貼文收藏</a>
+                <li class="nav-item">
+                  <a class="nav-link"href="#">貼文收藏</a>
                 </li>
 
                 <li class="nav-item">
