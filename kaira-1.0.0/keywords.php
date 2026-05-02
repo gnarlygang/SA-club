@@ -1,13 +1,8 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
-
-$host   = 'localhost';
-$dbname = 'sa2026';
-$user   = 'root';
-$pass   = '';
-
+require_once "api/db.php";
 try {
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $user, $pass);
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $stmt = $pdo->query("SELECT keyword FROM keywords ORDER BY id ASC");
     $rows = $stmt->fetchAll(PDO::FETCH_COLUMN);

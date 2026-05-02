@@ -18,6 +18,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
     }
 }
+require_once "header.php"
 ?>
 
 <!DOCTYPE html>
@@ -25,126 +26,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <head>
     <meta charset="UTF-8">
     <title>發佈公告 - Management Console</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <style>
-        /* 套用你提供的基礎 CSS */
-        body {
-            font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif;
-            margin: 0;
-            height: 100%;
-            /* 延續藍黑色背景需求 */
-            background: #ffffff; 
-            overflow-x: hidden;
-        }
-
-        .full-screen-wrapper {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        /* 延續玻璃擬態卡片設計 */
-        .glass-card {
-    /* 改為實心深黑藍色 */
-    background: #2d3a4a; 
-    
-    /* 移除模糊濾鏡，實色不需要此屬性 */
-    backdrop-filter: none; 
-    
-    /* 調整邊框顏色，讓邊緣有微弱的藍光質感 */
-    border: 1px solid #2c3e50; 
-    
-    /* 保持原有的圓角與大小設定 */
-    border-radius: 20px;
-    width: 100%;
-    max-width: 900px;
-    padding: 40px;
-    
-}
-
-        .card-title {
-            color: #ffffff;
-            font-weight: 700;
-            letter-spacing: 2px;
-            text-align: center;
-            margin-bottom: 30px;
-            text-shadow: 0 2px 10px rgba(0, 123, 255, 0.5);
-        }
-
-        /* 打字區：保持純白，文字置中 */
-        .form-control {
-            background-color: #ffffff !important;
-            color: #212529 !important;
-            border: none;
-            border-radius: 12px;
-            padding: 15px 20px;
-            font-size: 1.1rem;
-            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
-            text-align: center; 
-            width: 100%;
-            display: block;
-            margin-bottom: 20px;
-            box-sizing: border-box;
-        }
-
-        .form-control:focus {
-            outline: none;
-            box-shadow: 0 0 15px rgba(0, 123, 255, 0.6);
-            transform: scale(1.01);
-            transition: all 0.3s ease;
-        }
-
-        label {
-            color: #ced4da !important;
-            margin-bottom: 8px;
-            display: block;
-            font-weight: 500;
-            text-align: center;
-        }
-
-        /* 酷炫按鈕：使用你提供的 footer 顏色與深色調 */
-        .btn-submit {
-            background: #afbac7; /* 使用你提供的 footer-custom 顏色 */
-            border: none;
-            color: #333;
-            font-weight: bold;
-            padding: 12px 60px;
-            border-radius: 50px;
-            text-transform: uppercase;
-            transition: 0.3s;
-            cursor: pointer;
-            display: block;
-            margin: 0 auto;
-        }
-
-        .btn-submit:hover {
-            transform: scale(1.05);
-            background: #ffffff;
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
-        }
-
-        .btn-back-container {
-            text-align: center;
-            margin-top: 20px;
-        }
-
-        .btn-back {
-            color: rgba(255, 255, 255, 0.6);
-            text-decoration: none;
-            transition: 0.3s;
-            font-size: 0.9rem;
-        }
-
-        .btn-back:hover {
-            color: #ffffff;
-        }
-
-        /* 你提供的其餘元件 CSS (保留以備後續擴充) */
-        .footer-custom { background-color: #afbac7; color: #333; }
-        .cat-list { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
-    </style>
 </head>
 <body>
 
@@ -180,6 +61,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </form>
     </div>
 </div>
-
+<?php require_once "footer.php"; ?>
 </body>
 </html>

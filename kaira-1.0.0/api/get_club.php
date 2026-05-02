@@ -8,7 +8,7 @@ header('Content-Type: application/json; charset=utf-8');
 $host = 'localhost';
 $db   = 'sa2026'; 
 $user = 'root'; 
-$pass = ''; // XAMPP 留空，MAMP 填 root
+$pass = 'A230736409'; // XAMPP 留空，MAMP 填 root
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass);

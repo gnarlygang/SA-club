@@ -1,10 +1,7 @@
 <?php
 session_start();
 
-$host     = "localhost";
-$dbname   = "sa2026";
-$db_user  = "root";       // 請依實際情況修改
-$db_pass  = "12345678";           // 請依實際情況修改
+require_once "api/db.php";
 
 $error   = "";
 $success = "";
@@ -19,8 +16,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         try {
             $pdo = new PDO(
                 "mysql:host=$host;dbname=$dbname;charset=utf8mb4",
-                $db_user,
-                $db_pass,
+                $username,
+                $password,
                 [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
             );
 

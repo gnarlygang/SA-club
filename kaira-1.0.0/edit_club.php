@@ -1,11 +1,7 @@
 <?php
 session_start();
 
-$host    = "localhost";
-$dbname  = "sa2026";
-$db_user = "root";
-$db_pass = "12345678";
-
+require_once "api/db.php";
 $error = "";
 
 $club_id = isset($_GET["id"]) ? (int)$_GET["id"] : (isset($_POST["club_id"]) ? (int)$_POST["club_id"] : 0);
@@ -13,8 +9,8 @@ $club_id = isset($_GET["id"]) ? (int)$_GET["id"] : (isset($_POST["club_id"]) ? (
 try {
     $pdo = new PDO(
         "mysql:host=$host;dbname=$dbname;charset=utf8mb4",
-        $db_user,
-        $db_pass,
+        $username,
+        $password,
         [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
     );
 
