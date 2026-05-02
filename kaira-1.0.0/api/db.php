@@ -2,8 +2,7 @@
 $host = "localhost";
 $dbname = "sa2026";
 $username = "root";
-$password = "A230736409"; 
-//12345678
+$password = "12345678"; 
 try {
     $pdo = new PDO(
         "mysql:host=$host;dbname=$dbname;charset=utf8mb4",
