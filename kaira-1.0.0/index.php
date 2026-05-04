@@ -662,7 +662,7 @@ footer {
     <p class="hero-sub">探索百餘個精彩社團，參與活動、結交夥伴，讓大學四年留下最難忘的記憶。</p>
 
     <div class="hero-btns">
-      <a href="academic.php" class="btn-hero-primary">探索社團</a>
+      <a href="clubs.php" class="btn-hero-primary">探索社團</a>
       <a href="activities.php" class="btn-hero-ghost">近期活動</a>
     </div>
 

@@ -1,19 +1,9 @@
 <?php
 session_start();
 $_SESSION['role'] = 0; // 強制把當前狀態改為訪客
-$role = 0; 
-
-<<<<<<< HEAD
-$host    = "localhost";
-$dbname  = "sa2026";
-$db_user = "root";
-$db_pass = "";
-=======
-
-
+$role = 0;
 
 require_once "api/db.php";
->>>>>>> ff9d9d8dfc7e99533a15e6cde67f9a611bbc9300
 
 try {
   

@@ -106,7 +106,6 @@ function qsMerge(array $override, array $exclude = []): string {
 
 require_once "header.php";
 ?>
-<<<<<<< HEAD
 <style>
 :root {
     --ink:    #1a1a2e;
@@ -456,10 +455,6 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     .act-img { height: 160px; grid-column: 1; grid-row: auto; }
 }
 </style>
-=======
-
-
->>>>>>> ff9d9d8dfc7e99533a15e6cde67f9a611bbc9300
 
 <div class="page-wrap">
     <!-- ══════════════ LEFT SIDEBAR ══════════════ -->

@@ -1,14 +1,7 @@
 <?php
 session_start();
 
-<<<<<<< HEAD
-$host    = "localhost";
-$dbname  = "sa2026";
-$db_user = "root";
-$db_pass = "";
-=======
 require_once "api/db.php";
->>>>>>> ff9d9d8dfc7e99533a15e6cde67f9a611bbc9300
 
 $error = "";
 
