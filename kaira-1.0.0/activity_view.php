@@ -39,7 +39,7 @@ function fmt_date($d) {
 
 $is_deadline_passed = strtotime($activity["signup_deadline"]) < strtotime(date("Y-m-d"));
 
-require_once "header.php";
+
 ?>
 <!DOCTYPE html>
 <html lang="zh-Hant">
@@ -273,7 +273,7 @@ require_once "header.php";
   </style>
 </head>
 <body>
-
+<?php require_once __DIR__ . "/header.php"; ?>
 <div class="view-wrapper">
   <div class="view-card">
 
