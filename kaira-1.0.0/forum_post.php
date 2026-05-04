@@ -4,7 +4,7 @@ session_start();
 $host    = "localhost";
 $dbname  = "sa2026";
 $db_user = "root";
-$db_pass = "12345678";
+$db_pass = "";
 
 $post_id = isset($_GET["id"]) ? (int)$_GET["id"] : 0;
 $error   = "";
