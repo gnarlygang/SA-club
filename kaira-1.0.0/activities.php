@@ -1,13 +1,10 @@
 <?php
 session_start();
 
-$host   = 'localhost';
-$dbname = 'sa2026';
-$user   = 'root';
-$pass   = '';
+require_once "api/db.php";
 
 try {
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $user, $pass);
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch (PDOException $e) {
     $pdo = null;
@@ -109,6 +106,7 @@ function qsMerge(array $override, array $exclude = []): string {
 
 require_once "header.php";
 ?>
+<<<<<<< HEAD
 <style>
 :root {
     --ink:    #1a1a2e;
@@ -458,6 +456,10 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     .act-img { height: 160px; grid-column: 1; grid-row: auto; }
 }
 </style>
+=======
+
+
+>>>>>>> ff9d9d8dfc7e99533a15e6cde67f9a611bbc9300
 
 <div class="page-wrap">
     <!-- ══════════════ LEFT SIDEBAR ══════════════ -->
@@ -733,6 +735,6 @@ function showToast(msg) {
     t._t = setTimeout(() => { t.style.opacity = '0'; }, 2000);
 }
 </script>
-
+<?php include 'footer.php'; ?>
 </body>
 </html>

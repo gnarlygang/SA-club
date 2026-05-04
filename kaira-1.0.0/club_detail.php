@@ -2,13 +2,9 @@
 session_start();
 
 // ─── 資料庫連線 ──────────────────────────────────────────────────
-$host   = 'localhost';
-$dbname = 'sa2026';
-$user   = 'root';
-$pass   = '';
-
+require_once "api/db.php";
 try {
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $user, $pass);
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch (PDOException $e) {
     $pdo = null;

@@ -1,10 +1,14 @@
 <?php
 session_start();
 
+<<<<<<< HEAD
 $host    = "localhost";
 $dbname  = "sa2026";
 $db_user = "root";
 $db_pass = "";
+=======
+require_once "api/db.php";
+>>>>>>> ff9d9d8dfc7e99533a15e6cde67f9a611bbc9300
 
 $post_id = isset($_GET["id"]) ? (int)$_GET["id"] : 0;
 $error   = "";
@@ -13,8 +17,8 @@ $success = "";
 try {
     $pdo = new PDO(
         "mysql:host=$host;dbname=$dbname;charset=utf8mb4",
-        $db_user,
-        $db_pass,
+        $username,
+        $password,
         [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
     );
 

@@ -1,13 +1,10 @@
 <?php
 session_start();
 // ─── 資料庫連線設定 ───────────────────────────────────────────────
-$host   = 'localhost';
-$dbname = 'sa2026';
-$user   = 'root';
-$pass   = '';
+require_once "api/db.php";
 
 try {
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $user, $pass);
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch (PDOException $e) {
     $pdo = null;
@@ -304,7 +301,7 @@ body { font-family: var(--font-sans); background: var(--paper); color: var(--ink
     </div>
     <?php endif; ?>
 </main>
-
+<?php include_once 'footer.php'; ?>
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
