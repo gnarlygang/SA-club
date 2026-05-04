@@ -58,7 +58,7 @@ if ($pdo) {
         $params[':cat'] = $filter_cat;
     }
     if ($filter_subscribed && isset($_SESSION['user_id'])) {
-        $sql .= " AND a.user_id IN (SELECT club_user_id FROM subscriptions WHERE user_id = :uid)";
+        $sql .= " AND a.user_id IN (SELECT club_id FROM subscriptions WHERE user_id = :uid)";
         $params[':uid'] = $_SESSION['user_id'];
     }
     if ($filter_club) {
