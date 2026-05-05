@@ -1,5 +1,6 @@
 <?php
 session_start();
+date_default_timezone_set('Asia/Taipei');
 
 require_once "api/db.php";
 
@@ -68,6 +69,8 @@ $post_author = $post["nickname"] ?: $post["username"];
 
 function time_ago($datetime) {
     $diff = time() - strtotime($datetime);
+    if ($diff < 0) $diff = 0;
+    if ($diff < 60)    return "剛剛";
     if ($diff < 3600)  return floor($diff / 60) . " 分鐘前";
     if ($diff < 86400) return floor($diff / 3600) . " 小時前";
     return date("Y/m/d H:i", strtotime($datetime));
