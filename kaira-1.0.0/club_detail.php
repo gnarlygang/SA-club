@@ -288,50 +288,7 @@ require_once "header.php";
 
 </div><!-- /.container -->
 
-<!-- Footer -->
-<footer id="footer" class="mt-5" style="background-color: #afbac7; color: #333333; font-family: 'Microsoft JhengHei', '微軟正黑體', sans-serif;">
-    <div class="container">
-      <div class="row d-flex flex-wrap justify-content-between py-5" style="border-bottom: 1px solid rgba(0,0,0,0.1);">
-        <div class="col-md-4 col-sm-6 mb-4">
-          <h5 class="mb-4 pb-2" style="border-bottom:2px solid #555;width:fit-content;font-weight:bold;">校園連結</h5>
-          <ul class="list-unstyled fs-6">
-            <li class="py-1"><a href="https://www.fju.edu.tw/" target="_blank" class="text-dark text-decoration-none">＞ 輔大全球資訊網</a></li>
-            <li class="py-1"><a href="https://www.fju.edu.tw/article.jsp?articleID=21" target="_blank" class="text-dark text-decoration-none">＞ WebMail & LDAP</a></li>
-            <li class="py-1"><a href="https://www.fju.edu.tw/resource.jsp?labelID=27" target="_blank" class="text-dark text-decoration-none">＞ 職涯服務 & 學生會</a></li>
-          </ul>
-        </div>
-        <div class="col-md-4 col-sm-6 mb-4">
-          <h5 class="mb-4 pb-2" style="border-bottom:2px solid #555;width:fit-content;font-weight:bold;">公告資訊</h5>
-          <ul class="list-unstyled fs-6">
-            <li class="py-1"><a href="https://www.fju.edu.tw/fee/1_1.html" target="_blank" class="text-dark text-decoration-none">＞ 校務財務資訊專區</a></li>
-            <li class="py-1"><a href="http://life.dsa.fju.edu.tw/resource.jsp?labelID=35" target="_blank" class="text-dark text-decoration-none">＞ 獎助學金</a></li>
-            <li class="py-1"><a href="http://www.secretariat.fju.edu.tw/article.jsp?articleID=8" target="_blank" class="text-dark text-decoration-none">＞ 行事曆</a></li>
-          </ul>
-        </div>
-        <div class="col-md-4 col-sm-6 mb-4">
-          <h5 class="mb-4 pb-2" style="border-bottom:2px solid #555;width:fit-content;font-weight:bold;">快速連結</h5>
-          <ul class="list-unstyled fs-6">
-            <li class="py-1"><a href="http://activity.dsa.fju.edu.tw/ActivityList.jsp" target="_blank" class="text-dark text-decoration-none">＞ 活動報名系統</a></li>
-            <li class="py-1"><a href="https://www.fju.edu.tw/article.jsp?articleID=5" target="_blank" class="text-dark text-decoration-none">＞ 輔大媒體家族</a></li>
-            <li class="py-1"><a href="https://cre.fju.edu.tw/" target="_blank" class="text-dark text-decoration-none">＞ 研究倫理中心</a></li>
-          </ul>
-        </div>
-      </div>
-      <div class="row py-4 align-items-center">
-        <div class="col-md-6 mb-3">
-          <p class="h6 mb-1" style="font-weight:bold;">天主教輔仁大學</p>
-          <p class="mb-1 small">242062 新北市新莊區中正路510號</p>
-          <p class="mb-0 small">電話：(02) 2905-2000</p>
-        </div>
-        <div class="col-md-6 text-md-end">
-          <p class="small mb-0 opacity-75" style="color:#444;">
-            天主教輔仁大學 © 2014-2026 版權所有 |
-            <a href="https://www.fju.edu.tw/privacy.jsp" target="_blank" class="text-dark mx-1">隱私權聲明</a>
-          </p>
-        </div>
-      </div>
-    </div>
-</footer>
+<?php include 'footer.php'; ?>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

@@ -18,7 +18,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
     }
 }
-require_once "header.php"
+
 ?>
 
 <!DOCTYPE html>
@@ -28,7 +28,7 @@ require_once "header.php"
     <title>發佈公告 - Management Console</title>
 </head>
 <body>
-
+<?php require_once "header.php"; ?>
 <div class="full-screen-wrapper">
     <div class="glass-card">
         <div class="text-center">
