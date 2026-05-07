@@ -1,0 +1,329 @@
+/* ================================
+   ann_detail.css
+   公告詳情頁樣式
+================================ */
+
+/* 保險：如果 ann_detail.php 沒有載入 index.css，也能正常顯示 */
+:root {
+  --navy: #1a2744;
+  --navy-mid: #243257;
+  --navy-light: #2e3f6b;
+  --accent: #3a5fa0;
+  --accent-hover: #4a72be;
+  --gold: #c8a96e;
+  --gold-light: #e8c98e;
+  --cream: #f7f4ef;
+  --cream-dark: #ede9e0;
+  --white: #ffffff;
+  --text-dark: #1a1f2e;
+  --text-mid: #4a5068;
+  --text-muted: #8a91a8;
+  --border-light: rgba(26,39,68,0.10);
+  --border-mid: rgba(26,39,68,0.18);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Noto Sans TC', sans-serif;
+  background: var(--cream);
+  color: var(--text-dark);
+}
+
+/* ================================
+   外層背景
+================================ */
+
+.ann-detail-page {
+  min-height: calc(100vh - 60px);
+  background:
+    radial-gradient(circle at top right, rgba(200,169,110,0.18), transparent 34%),
+    linear-gradient(180deg, var(--cream) 0%, #f2eee6 100%);
+  padding: 3rem 1.5rem 4rem;
+}
+
+/* ================================
+   主卡片
+================================ */
+
+.ann-detail-card {
+  max-width: 880px;
+  margin: 0 auto;
+  background: var(--white);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 12px 36px rgba(26,39,68,0.10);
+}
+
+/* ================================
+   卡片上方深藍區
+================================ */
+
+.ann-detail-header {
+  background: var(--navy);
+  padding: 2rem 2.4rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.ann-detail-header::after {
+  content: '';
+  position: absolute;
+  right: -90px;
+  bottom: -120px;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(200,169,110,0.18) 0%, transparent 65%);
+  pointer-events: none;
+}
+
+.ann-detail-tag {
+  display: inline-block;
+  background: rgba(232,201,142,0.16);
+  color: var(--gold-light);
+  border: 1px solid rgba(232,201,142,0.35);
+  border-radius: 5px;
+  padding: 0.22rem 0.65rem;
+  margin-bottom: 0.9rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.ann-detail-title {
+  position: relative;
+  z-index: 1;
+  font-family: 'Noto Serif TC', serif;
+  font-size: clamp(1.45rem, 3vw, 2.1rem);
+  font-weight: 700;
+  line-height: 1.45;
+  color: #fff;
+  margin: 0 0 0.85rem;
+}
+
+.ann-detail-date {
+  position: relative;
+  z-index: 1;
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.55);
+  font-weight: 300;
+}
+
+/* ================================
+   內容區
+================================ */
+
+.ann-detail-body {
+  padding: 2.2rem 2.4rem 2.5rem;
+}
+
+.ann-detail-section {
+  margin-bottom: 2rem;
+}
+
+.ann-detail-section:last-child {
+  margin-bottom: 0;
+}
+
+.ann-detail-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.9rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--navy);
+  letter-spacing: 0.03em;
+}
+
+.ann-detail-section-title::before {
+  content: '';
+  width: 4px;
+  height: 1.15em;
+  background: var(--gold);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.ann-detail-text {
+  background: #fbfaf7;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 1.2rem 1.35rem;
+  font-size: 0.95rem;
+  line-height: 1.9;
+  color: var(--text-mid);
+  font-weight: 300;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.ann-detail-text p {
+  margin: 0;
+}
+
+/* ================================
+   按鈕區
+================================ */
+
+.ann-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  width: 100%;
+  flex-wrap: nowrap;
+}
+
+.ann-btn-back {
+  display: inline-block;
+  background: var(--navy);
+  color: #fff;
+  border-radius: 7px;
+  padding: 0.65rem 1.4rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.ann-btn-back:hover {
+  background: var(--accent);
+  transform: translateY(-1px);
+}
+
+.ann-btn-secondary {
+  display: inline-block;
+  background: var(--cream);
+  color: var(--accent);
+  border: 1px solid rgba(58,95,160,0.28);
+  border-radius: 7px;
+  padding: 0.65rem 1.4rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.ann-btn-secondary:hover {
+  background: rgba(58,95,160,0.08);
+  transform: translateY(-1px);
+}
+
+/* ================================
+   錯誤訊息區
+================================ */
+
+.ann-detail-error {
+  max-width: 720px;
+  margin: 3rem auto;
+  background: var(--white);
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  padding: 2rem;
+  text-align: center;
+  box-shadow: 0 8px 28px rgba(26,39,68,0.08);
+}
+
+.ann-detail-error h2 {
+  font-size: 1.25rem;
+  color: var(--navy);
+  margin-bottom: 0.8rem;
+}
+
+.ann-detail-error p {
+  color: var(--text-mid);
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+
+/* ================================
+   RWD
+================================ */
+
+@media (max-width: 760px) {
+  .ann-detail-page {
+    padding: 1.5rem 1rem 2.5rem;
+  }
+
+  .ann-detail-header {
+    padding: 1.6rem 1.4rem;
+  }
+
+  .ann-detail-body {
+    padding: 1.6rem 1.4rem 1.8rem;
+  }
+
+  .ann-detail-title {
+    font-size: 1.45rem;
+  }
+
+  .ann-detail-text {
+    padding: 1rem;
+    font-size: 0.9rem;
+  }
+
+  .ann-detail-actions {
+    flex-direction: column;
+  }
+
+  .ann-btn-back,
+  .ann-btn-secondary {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+
+/* 編輯公告按鈕 */
+.ann-btn-secondary {
+  display: inline-block;
+  background: var(--cream);
+  color: var(--accent);
+  border: 1px solid rgba(58, 95, 160, 0.28);
+  border-radius: 7px;
+  padding: 0.65rem 1.4rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.15s;
+}
+
+.ann-btn-secondary:hover {
+  background: rgba(58, 95, 160, 0.08);
+  color: var(--accent-hover);
+  border-color: rgba(58, 95, 160, 0.45);
+  transform: translateY(-1px);
+}
+
+/* 刪除公告按鈕 */
+.ann-btn-danger {
+  display: inline-block;
+  background: #b94a48;
+  color: #fff;
+  border: 1px solid #b94a48;
+  border-radius: 7px;
+  padding: 0.65rem 1.4rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-family: 'Noto Sans TC', sans-serif;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, transform 0.15s;
+}
+
+.ann-btn-danger:hover {
+  background: #9f3735;
+  border-color: #9f3735;
+  transform: translateY(-1px);
+}
+
+/* 如果刪除按鈕放在 form 裡，避免 form 影響排版 */
+.ann-delete-form {
+  margin-left: auto;
+  display: inline-flex;
+}

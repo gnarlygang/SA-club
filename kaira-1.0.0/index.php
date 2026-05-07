@@ -799,28 +799,37 @@ footer {
   <div class="sidebar">
 
     <!-- Announcements -->
-    <div class="sidebar-card">
-      <div class="sidebar-card-header">
-        <h3>系統公告</h3>
-      </div>
+<div class="sidebar-card">
+  <div class="sidebar-card-header">
+    <h3>系統公告</h3>
+  </div>
 
-      <div class="sidebar-card-body">
-        <?php if (!empty($announcements)): ?>
-          <?php foreach ($announcements as $ann): ?>
-            <div class="ann-item">
-              <span class="ann-tag sys">公告</span>
-              <h4><?= h($ann['title']) ?></h4>
-              <p><?= h(shortText($ann['content'], 32)) ?></p>
-              <div class="ann-date"><?= h(fmtDate($ann['date'])) ?></div>
-            </div>
-          <?php endforeach; ?>
-        <?php else: ?>
+  <div class="sidebar-card-body">
+    <?php if (!empty($announcements)): ?>
+      <?php foreach ($announcements as $ann): ?>
+
+        <a href="ann_detail.php?id=<?= h($ann['id']) ?>" class="ann-link">
           <div class="ann-item">
-            <h4>目前沒有公告</h4>
+            <span class="ann-tag sys">公告</span>
+
+            <h4><?= h($ann['title']) ?></h4>
+
+            <p><?= h(shortText($ann['content'], 32)) ?></p>
+
+            <div class="ann-date">
+              <?= h(fmtDate($ann['date'])) ?>
+            </div>
           </div>
-        <?php endif; ?>
+        </a>
+
+      <?php endforeach; ?>
+    <?php else: ?>
+      <div class="ann-item">
+        <h4>目前沒有公告</h4>
       </div>
-    </div>
+    <?php endif; ?>
+  </div>
+</div>
 
     <!-- Hot clubs -->
     <div class="sidebar-card">
