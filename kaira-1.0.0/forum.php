@@ -1,7 +1,9 @@
 <?php
-session_start();
-$_SESSION['role'] = 0; // 強制把當前狀態改為訪客
-$role = 0;
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+$role = $_SESSION['role'] ?? 0;
 
 require_once "api/db.php";
 
@@ -58,8 +60,6 @@ require_once "header.php";
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>社團論壇 — 輔大社團平台</title>
-
-
 </head>
 <body>
 
