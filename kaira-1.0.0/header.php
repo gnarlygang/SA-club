@@ -20,24 +20,10 @@ $username = $_SESSION['username'] ?? '';
     <title>輔大社團平台</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
-    <link rel="stylesheet" href="css/index.css">
     <link rel="stylesheet" href="css/activity_list.css">
     <link rel="stylesheet" href="css/club_sub.css">
     <link rel="stylesheet" href="css/forum.css">
-    <style>
-        .nav-username {
-            color: #ffffff !important;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .nav-username:hover {
-            color: #ffffff !important;
-            text-decoration: none;
-            opacity: 0.8;
-        }
-    </style>
+    <link rel="stylesheet" href="css/index.css">
 </head>
 
 <!-- NAV -->

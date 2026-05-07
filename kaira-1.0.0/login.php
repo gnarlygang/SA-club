@@ -325,7 +325,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             </div>
             <!-- 身分別提示 -->
             <div class="role-hints">
-              <span class="role-chip">👨‍🏫 教師：6位數</span>
+            
               <span class="role-chip">🏛️ 社團：7位數</span>
               <span class="role-chip">🎓 學生：9位數</span>
               <span class="role-chip">🔧 管理者：不限</span>

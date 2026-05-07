@@ -55,8 +55,6 @@ require_once "header.php";
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>社團論壇 — 輔大社團平台</title>
-
-
 </head>
 <body>
 

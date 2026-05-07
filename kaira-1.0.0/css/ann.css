@@ -1,0 +1,219 @@
+/* ann.css - Announcement Management Page */
+/* Designed to match index.php visual style */
+
+:root {
+  --navy: #1a2744;
+  --navy-mid: #243257;
+  --navy-light: #2e3f6b;
+  --accent: #3a5fa0;
+  --accent-hover: #4a72be;
+  --gold: #c8a96e;
+  --gold-light: #e8c98e;
+  --cream: #f7f4ef;
+  --cream-dark: #ede9e0;
+  --white: #ffffff;
+  --text-dark: #1a1f2e;
+  --text-mid: #4a5068;
+  --text-muted: #8a91a8;
+  --border-light: rgba(26, 39, 68, 0.10);
+  --border-mid: rgba(26, 39, 68, 0.18);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
+  background: var(--cream);
+  color: var(--text-dark);
+  min-height: 100vh;
+}
+
+a {
+  text-decoration: none;
+}
+
+/* Announcement page layout */
+.full-screen-wrapper {
+  min-height: calc(100vh - 60px);
+  padding: 3rem 1.5rem 4rem;
+
+  background:
+    radial-gradient(circle at top right, rgba(200,169,110,0.08), transparent 40%),
+    linear-gradient(180deg, #1a2744 0%, #243257 100%);
+
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+/* Main form card */
+.glass-card {
+  width: min(920px, 100%);
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--border-light);
+  border-radius: 18px;
+  box-shadow: 0 18px 48px rgba(26, 39, 68, 0.12);
+  padding: 2.4rem 2.6rem;
+  overflow: hidden;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.card-title {
+  font-family: 'Noto Serif TC', serif;
+  font-size: clamp(1.45rem, 3vw, 2rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--navy);
+  margin-bottom: 2rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  position: relative;
+}
+
+.card-title::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -0.8rem;
+  width: 64px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--gold);
+  transform: translateX(-50%);
+}
+
+.text-uppercase {
+  text-transform: uppercase;
+}
+
+/* Form */
+.glass-card form {
+  margin-top: 1.6rem;
+}
+
+.mb-4 {
+  margin-bottom: 1.45rem;
+}
+
+.glass-card label {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.55rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--navy);
+  letter-spacing: 0.02em;
+}
+
+.form-control {
+  width: 100%;
+  border: 1px solid var(--border-mid);
+  border-radius: 11px;
+  background: #fff;
+  color: var(--text-dark);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  padding: 0.85rem 1rem;
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
+}
+
+.form-control::placeholder {
+  color: var(--text-muted);
+}
+
+.form-control:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(58, 95, 160, 0.12);
+  background: #fff;
+}
+
+textarea.form-control {
+  min-height: 260px;
+}
+
+/* Buttons */
+.btn-submit {
+  width: 100%;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.45rem;
+  border: none;
+  border-radius: 12px;
+  background: var(--navy);
+  color: #fff;
+  padding: 0.95rem 1.4rem;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(26, 39, 68, 0.18);
+  transition: background 0.18s, transform 0.15s, box-shadow 0.18s;
+}
+
+.btn-submit:hover {
+  background: var(--navy-light);
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgba(26, 39, 68, 0.22);
+}
+
+.btn-back-container {
+  margin-top: 1.4rem;
+  text-align: center;
+}
+
+.btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--accent);
+  font-size: 0.92rem;
+  font-weight: 600;
+  transition: color 0.18s, transform 0.15s;
+}
+
+.btn-back:hover {
+  color: var(--navy);
+  transform: translateX(-2px);
+}
+
+/* Bootstrap icon spacing fallback */
+.me-2 {
+  margin-right: 0.5rem;
+}
+
+.ms-2 {
+  margin-left: 0.5rem;
+}
+
+/* Responsive */
+@media (max-width: 760px) {
+  .full-screen-wrapper {
+    padding: 2rem 1rem 3rem;
+  }
+
+  .glass-card {
+    padding: 1.7rem 1.3rem;
+    border-radius: 14px;
+  }
+
+  .card-title {
+    font-size: 1.35rem;
+    letter-spacing: 0.03em;
+  }
+
+  textarea.form-control {
+    min-height: 220px;
+  }
+}
