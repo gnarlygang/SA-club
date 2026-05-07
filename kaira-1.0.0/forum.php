@@ -7,8 +7,9 @@ $role = $_SESSION['role'] ?? 0;
 
 require_once "api/db.php";
 
+$search = trim($_GET['search'] ?? '');
+
 try {
-  
     $pdo = new PDO(
         "mysql:host=$host;dbname=$dbname;charset=utf8mb4",
         $username,
@@ -16,35 +17,54 @@ try {
         [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
     );
 
-    // 取得所有分類
     $categories = $pdo->query("SELECT * FROM forum_categories ORDER BY sort_order ASC")
                       ->fetchAll(PDO::FETCH_ASSOC);
 
-    // 目前選擇的分類（預設第一個）
     $active_cat = isset($_GET["cat"]) ? (int)$_GET["cat"] : ($categories[0]["id"] ?? 1);
 
-    // 取得該分類的文章（含留言數、發文者）
-    $stmt = $pdo->prepare("
-        SELECT fp.*,
-               u.username,
-               u.nickname,
-               COUNT(fc.id) AS comment_count
-        FROM forum_posts fp
-        LEFT JOIN users u ON u.user_id = fp.user_id
-        LEFT JOIN forum_comments fc ON fc.post_id = fp.id
-        WHERE fp.category_id = :cat
-        GROUP BY fp.id
-        ORDER BY fp.created_at DESC
-    ");
-    $stmt->execute([":cat" => $active_cat]);
-    $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    if ($search !== '') {
+        // 搜尋模式：搜尋所有分類的文章標題、內容、留言
+        $stmt = $pdo->prepare("
+            SELECT DISTINCT fp.*,
+                   u.username,
+                   u.nickname,
+                   COUNT(DISTINCT fc.id) AS comment_count
+            FROM forum_posts fp
+            LEFT JOIN users u ON u.user_id = fp.user_id
+            LEFT JOIN forum_comments fc ON fc.post_id = fp.id
+            WHERE fp.title LIKE :s1
+               OR fp.content LIKE :s2
+               OR fc.content LIKE :s3
+            GROUP BY fp.id
+            ORDER BY fp.created_at DESC
+        ");
+        $like = "%$search%";
+        $stmt->execute([':s1' => $like, ':s2' => $like, ':s3' => $like]);
+        $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $active_cat_name = "搜尋結果";
+    } else {
+        // 一般模式：依分類顯示
+        $stmt = $pdo->prepare("
+            SELECT fp.*,
+                   u.username,
+                   u.nickname,
+                   COUNT(fc.id) AS comment_count
+            FROM forum_posts fp
+            LEFT JOIN users u ON u.user_id = fp.user_id
+            LEFT JOIN forum_comments fc ON fc.post_id = fp.id
+            WHERE fp.category_id = :cat
+            GROUP BY fp.id
+            ORDER BY fp.created_at DESC
+        ");
+        $stmt->execute([":cat" => $active_cat]);
+        $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // 目前分類名稱
-    $active_cat_name = "";
-    foreach ($categories as $c) {
-        if ($c["id"] == $active_cat) {
-            $active_cat_name = $c["name"];
-            break;
+        $active_cat_name = "";
+        foreach ($categories as $c) {
+            if ($c["id"] == $active_cat) {
+                $active_cat_name = $c["name"];
+                break;
+            }
         }
     }
 
@@ -60,6 +80,40 @@ require_once "header.php";
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>社團論壇 — 輔大社團平台</title>
+  <style>
+    .forum-search-wrap {
+    padding: 1rem 1rem .5rem;
+    border-bottom: 1px solid #e8e8ee;
+}
+.forum-search-label {
+    font-size: .75rem;
+    font-weight: 600;
+    color: #8888aa;
+    letter-spacing: .05em;
+    margin-bottom: .5rem;
+}
+.forum-search-box {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    background: #f5f5f7;
+    border: 1px solid #e0e0e8;
+    border-radius: 10px;
+    padding: .55rem .9rem;
+}
+.forum-search-box i { color: #8888aa; font-size: .9rem; flex-shrink: 0; }
+.forum-search-box input {
+    border: none; outline: none; background: transparent;
+    font-size: .85rem; width: 100%; color: #333;
+}
+.forum-search-box input::placeholder { color: #aaa; }
+.forum-search-box button {
+    border: none; background: none; cursor: pointer;
+    color: #8888aa; padding: 0; font-size: .9rem;
+    display: flex; align-items: center; flex-shrink: 0;
+}
+.forum-search-box button:hover { color: #1a1a2e; }
+  </style>
 </head>
 <body>
 
@@ -68,17 +122,30 @@ require_once "header.php";
   <!-- 左側分類 -->
   <aside class="forum-sidebar">
     <div class="sidebar-card">
+
+      <!-- 搜尋框 -->
+      <div class="forum-search-wrap">
+        <div class="forum-search-label">搜尋文章</div>
+        <form class="forum-search-box" method="GET" action="forum.php">
+          <i class="bi bi-search"></i>
+          <input type="text" name="search" placeholder="搜尋文章、留言…"
+                 value="<?= htmlspecialchars($search) ?>">
+          <button type="submit"><i class="bi bi-arrow-right-short" style="font-size:1.1rem"></i></button>
+        </form>
+      </div>
+
       <div class="sidebar-title"><i class="bi bi-journals me-2"></i>討論分類</div>
       <div class="sidebar-list">
         <?php foreach ($categories as $cat): ?>
           <a href="forum.php?cat=<?= $cat["id"] ?>"
-             class="sidebar-item <?= $cat["id"] == $active_cat ? 'active' : '' ?>">
+             class="sidebar-item <?= ($cat["id"] == $active_cat && $search === '') ? 'active' : '' ?>">
             <?= htmlspecialchars($cat["name"]) ?>
           </a>
         <?php endforeach; ?>
       </div>
+
     </div>
-  </aside>
+</aside>
 
   <!-- 右側文章列表 -->
   <main class="forum-main">
@@ -86,6 +153,10 @@ require_once "header.php";
     <div class="forum-header">
       <div>
         <span class="forum-title"><?= htmlspecialchars($active_cat_name) ?></span>
+        <?php if ($search !== ''): ?>
+          <span class="search-badge">「<?= htmlspecialchars($search) ?>」</span>
+          <a href="forum.php?cat=<?= $active_cat ?>" class="clear-search">✕ 清除</a>
+        <?php endif; ?>
         <span class="forum-count"><?= count($posts) ?> 篇文章</span>
       </div>
       <?php if (!empty($_SESSION["user_id"])): ?>
@@ -104,7 +175,7 @@ require_once "header.php";
     <?php if (empty($posts)): ?>
       <div class="empty-state">
         <i class="bi bi-chat-square-text"></i>
-        目前還沒有文章，成為第一個發表的人吧！
+        <?= $search !== '' ? "找不到「{$search}」相關文章" : "目前還沒有文章，成為第一個發表的人吧！" ?>
       </div>
     <?php else: ?>
       <?php foreach ($posts as $post):
