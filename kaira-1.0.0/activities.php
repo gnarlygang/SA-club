@@ -3,31 +3,36 @@ session_start();
 
 require_once "api/db.php";
 
-try {
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch (PDOException $e) {
-    $pdo = null;
-}
+$sort_by           = $_GET['sort_by'] ?? 'created_at';
+$filter_cat        = $_GET['cat'] ?? '';
+$filter_club       = $_GET['club'] ?? '';
+$filter_fee        = $_GET['fee'] ?? '';
+$filter_subscribed = isset($_GET['subscribed']) && $_GET['subscribed'] === '1';
+$search            = $_GET['search'] ?? '';
 
-$sort_by          = $_GET['sort_by']     ?? 'created_at';
-$filter_cat       = $_GET['cat']         ?? '';   // 社團分類
-$filter_club      = $_GET['club']        ?? '';   // 特定社團
-$filter_fee       = $_GET['fee']         ?? '';
-$filter_subscribed= isset($_GET['subscribed']) && $_GET['subscribed'] === '1';
-$search           = $_GET['search']      ?? '';
+$current_user_id = $_SESSION['user_id'] ?? 0;
 
 $allowed_sort = ['created_at', 'event_start', 'signup_deadline'];
-if (!in_array($sort_by, $allowed_sort)) $sort_by = 'created_at';
+if (!in_array($sort_by, $allowed_sort)) {
+    $sort_by = 'created_at';
+}
 
-$club_categories = ['學術性社團','休閒聯誼性社團','服務性社團','體能性社團','藝術性社團','音樂性社團'];
+$club_categories = [
+    '學術性社團',
+    '休閒聯誼性社團',
+    '服務性社團',
+    '體能性社團',
+    '藝術性社團',
+    '音樂性社團'
+];
 
-$activities  = [];
-$clubs_list  = [];
-$cat_counts  = [];   // 各分類的活動數
+$activities = [];
+$clubs_list = [];
+$cat_counts = [];
 
-if ($pdo) {
-    // 各分類活動數（JOIN clubs 取 category）
+if (isset($pdo)) {
+
+    // 各分類活動數
     $cntRows = $pdo->query("
         SELECT c.category, COUNT(a.id) AS cnt
         FROM activities a
@@ -35,41 +40,85 @@ if ($pdo) {
         WHERE c.category IS NOT NULL
         GROUP BY c.category
     ")->fetchAll(PDO::FETCH_ASSOC);
-    foreach ($cntRows as $r) $cat_counts[$r['category']] = $r['cnt'];
 
-    // 社團列表（依分類篩選）
-    if ($filter_cat) {
-        $stmt = $pdo->prepare("SELECT DISTINCT a.organizer FROM activities a LEFT JOIN clubs c ON c.user_id = a.user_id WHERE c.category = :cat ORDER BY a.organizer");
-        $stmt->execute([':cat' => $filter_cat]);
-    } else {
-        $stmt = $pdo->query("SELECT DISTINCT organizer FROM activities ORDER BY organizer");
+    foreach ($cntRows as $r) {
+        $cat_counts[$r['category']] = $r['cnt'];
     }
-    $clubs_list = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
-    // 主查詢
-    $sql = "SELECT a.*, c.name AS club_name, c.image AS club_image, c.category AS club_category
+    // 社團列表
+    if ($filter_cat) {
+        $stmt = $pdo->prepare("
+            SELECT DISTINCT a.organizer
             FROM activities a
             LEFT JOIN clubs c ON c.user_id = a.user_id
-            WHERE 1=1";
-    $params = [];
+            WHERE c.category = :cat
+            ORDER BY a.organizer
+        ");
+        $stmt->execute([
+            ':cat' => $filter_cat
+        ]);
+    } else {
+        $stmt = $pdo->query("
+            SELECT DISTINCT organizer
+            FROM activities
+            ORDER BY organizer
+        ");
+    }
+
+    $clubs_list = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+    // 主查詢：加入 favorites 判斷收藏狀態
+    $sql = "
+        SELECT 
+            a.*,
+            c.id AS club_id,
+            c.name AS club_name,
+            c.image AS club_image,
+            c.category AS club_category,
+            CASE 
+                WHEN f.id IS NOT NULL THEN 1
+                ELSE 0
+            END AS is_favorited
+        FROM activities a
+        LEFT JOIN clubs c ON c.user_id = a.user_id
+        LEFT JOIN favorites f
+            ON f.item_id = a.id
+            AND f.item_type = 'activity'
+            AND f.user_id = :current_user_id
+        WHERE 1=1
+    ";
+
+    $params = [
+        ':current_user_id' => $current_user_id
+    ];
 
     if ($filter_cat) {
         $sql .= " AND c.category = :cat";
         $params[':cat'] = $filter_cat;
     }
+
     if ($filter_subscribed && isset($_SESSION['user_id'])) {
-        $sql .= " AND a.user_id IN (SELECT club_id FROM subscriptions WHERE user_id = :uid)";
+        $sql .= "
+            AND c.id IN (
+                SELECT club_id
+                FROM subscriptions
+                WHERE user_id = :uid
+            )
+        ";
         $params[':uid'] = $_SESSION['user_id'];
     }
+
     if ($filter_club) {
         $sql .= " AND a.organizer = :club";
         $params[':club'] = $filter_club;
     }
+
     if ($filter_fee === 'free') {
         $sql .= " AND (a.fee = '免費' OR a.fee LIKE '%免費%' OR a.fee = '0')";
     } elseif ($filter_fee === 'paid') {
-        $sql .= " AND a.fee != '免費' AND a.fee NOT LIKE '%免費%' AND a.fee != '0'";
+        $sql .= " AND (a.fee != '免費' AND a.fee NOT LIKE '%免費%' AND a.fee != '0')";
     }
+
     if ($search !== '') {
         $sql .= " AND (a.title LIKE :s1 OR a.description LIKE :s2)";
         $params[':s1'] = "%$search%";
@@ -77,35 +126,59 @@ if ($pdo) {
     }
 
     $sql .= " ORDER BY a.$sort_by DESC";
+
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} else {
-    // 假資料
-    $clubs_list = ['輔大國樂社', '輔大熱舞社'];
-    $activities = [
-        ['id'=>1,'title'=>'春季音樂成果發表會','description'=>'輔大國樂社每年春季舉辦的成果發表會，演出曲目包含傳統國樂及現代改編曲，歡迎全校師生蒞臨欣賞。','event_start'=>'2026-05-15 19:00:00','event_end'=>'2026-05-15 21:00:00','location'=>'輔仁大學野聲樓 B1 表演廳','organizer'=>'輔大國樂社','fee'=>'免費入場','target'=>'全校師生及校外人士','signup_deadline'=>'2026-05-10','created_at'=>'2026-04-22 11:14:41','club_image'=>'https://images.unsplash.com/photo-1507838153414-b4b713384a76?auto=format&fit=crop&w=800&q=80','club_category'=>'音樂性社團'],
-        ['id'=>2,'title'=>'國樂入門體驗工作坊','description'=>'想學國樂卻不知從何開始？本工作坊提供二胡、琵琶、古箏等樂器體驗。','event_start'=>'2026-05-22 14:00:00','event_end'=>'2026-05-22 17:00:00','location'=>'輔仁大學藝文中心 302 室','organizer'=>'輔大國樂社','fee'=>'NT$100','target'=>'全校學生','signup_deadline'=>'2026-05-18','created_at'=>'2026-04-22 11:14:41','club_image'=>'https://images.unsplash.com/photo-1507838153414-b4b713384a76?auto=format&fit=crop&w=800&q=80','club_category'=>'音樂性社團'],
-    ];
 }
 
-function isFree(string $fee): bool {
+function isFree($fee): bool {
+    $fee = (string) $fee;
     return str_contains($fee, '免費') || strtolower($fee) === 'free' || $fee === '0';
 }
-function formatDate(string $dt): string { return date('Y/m/d', strtotime($dt)); }
-function formatDateTime(string $dt): string { return date('Y/m/d H:i', strtotime($dt)); }
-function isDeadlineSoon(string $d): bool { $t = strtotime($d); return ($t - time()) <= 7*86400 && $t >= time(); }
-function isDeadlinePassed(string $d): bool { return strtotime($d) < time(); }
 
-// 建構保留現有參數的查詢字串（排除某個 key）
+function formatDate($dt): string {
+    if (empty($dt)) return '未設定';
+    return date('Y/m/d', strtotime($dt));
+}
+
+function formatDateTime($dt): string {
+    if (empty($dt)) return '未設定';
+    return date('Y/m/d H:i', strtotime($dt));
+}
+
+function isDeadlineSoon($d): bool {
+    if (empty($d)) return false;
+    $t = strtotime($d);
+    return ($t - time()) <= 7 * 86400 && $t >= time();
+}
+
+function isDeadlinePassed($d): bool {
+    if (empty($d)) return false;
+    return strtotime($d) < time();
+}
+
 function qsMerge(array $override, array $exclude = []): string {
     $base = $_GET;
-    foreach ($exclude as $k) unset($base[$k]);
-    return http_build_query(array_merge($base, $override));
+
+    foreach ($exclude as $k) {
+        unset($base[$k]);
+    }
+
+    $merged = array_merge($base, $override);
+
+    foreach ($merged as $key => $value) {
+        if ($value === '') {
+            unset($merged[$key]);
+        }
+    }
+
+    return http_build_query($merged);
 }
 
 require_once "header.php";
 ?>
+
 <style>
 :root {
     --ink:    #1a1a2e;
@@ -120,10 +193,18 @@ require_once "header.php";
     --serif:  'Noto Serif TC', serif;
     --sans:   'Noto Sans TC', sans-serif;
 }
-*, *::before, *::after { box-sizing: border-box; }
-body { font-family: var(--sans); background: var(--paper); color: var(--ink); margin: 0; }
 
-/* ── Page wrapper ── */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--sans);
+    background: var(--paper);
+    color: var(--ink);
+    margin: 0;
+}
+
 .page-wrap {
     max-width: 1200px;
     margin: 0 auto;
@@ -134,9 +215,6 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     align-items: start;
 }
 
-/* ════════════════════════════════
-   LEFT SIDEBAR
-════════════════════════════════ */
 .sidebar {
     background: var(--white);
     border: 1px solid var(--border);
@@ -146,8 +224,13 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     top: 80px;
 }
 
-.sidebar-section { border-bottom: 1px solid var(--border); }
-.sidebar-section:last-child { border-bottom: none; }
+.sidebar-section {
+    border-bottom: 1px solid var(--border);
+}
+
+.sidebar-section:last-child {
+    border-bottom: none;
+}
 
 .sidebar-heading {
     font-size: .68rem;
@@ -158,7 +241,6 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     padding: .9rem 1rem .5rem;
 }
 
-/* 搜尋 */
 .sb-search {
     display: flex;
     align-items: center;
@@ -169,13 +251,23 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     border-radius: 7px;
     padding: .4rem .7rem;
 }
-.sb-search svg { width: 14px; height: 14px; color: var(--mute); flex-shrink: 0; }
-.sb-search input {
-    border: none; background: transparent; outline: none;
-    font-size: .83rem; color: var(--ink); width: 100%;
+
+.sb-search svg {
+    width: 14px;
+    height: 14px;
+    color: var(--mute);
+    flex-shrink: 0;
 }
 
-/* 側欄連結 */
+.sb-search input {
+    border: none;
+    background: transparent;
+    outline: none;
+    font-size: .83rem;
+    color: var(--ink);
+    width: 100%;
+}
+
 .sb-link {
     display: flex;
     align-items: center;
@@ -187,13 +279,19 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     transition: background .15s, color .15s;
     gap: .5rem;
 }
-.sb-link:hover { background: var(--paper); color: var(--ink); }
+
+.sb-link:hover {
+    background: var(--paper);
+    color: var(--ink);
+}
+
 .sb-link.active {
     background: #f0ebe8;
     color: var(--accent);
     font-weight: 600;
     border-left: 3px solid var(--accent);
 }
+
 .sb-link .cnt {
     font-size: .7rem;
     background: var(--paper);
@@ -202,10 +300,16 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     padding: .1rem .45rem;
     flex-shrink: 0;
 }
-.sb-link.active .cnt { background: #f5ddd6; color: var(--accent); }
 
-/* 費用 radio */
-.sb-radio-group { padding: .25rem .75rem .75rem; }
+.sb-link.active .cnt {
+    background: #f5ddd6;
+    color: var(--accent);
+}
+
+.sb-radio-group {
+    padding: .25rem .75rem .75rem;
+}
+
 .sb-radio {
     display: flex;
     align-items: center;
@@ -215,10 +319,15 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     color: var(--soft);
     cursor: pointer;
 }
-.sb-radio input[type=radio] { accent-color: var(--accent); }
 
-/* 排序 */
-.sb-sort-group { padding: .25rem .75rem .75rem; }
+.sb-radio input[type=radio] {
+    accent-color: var(--accent);
+}
+
+.sb-sort-group {
+    padding: .25rem .75rem .75rem;
+}
+
 .sb-sort-btn {
     display: block;
     width: 100%;
@@ -233,10 +342,18 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     text-decoration: none;
     transition: background .15s;
 }
-.sb-sort-btn:hover { background: var(--paper); color: var(--ink); }
-.sb-sort-btn.active { color: var(--accent); font-weight: 600; background: #f0ebe8; }
 
-/* 清除篩選 */
+.sb-sort-btn:hover {
+    background: var(--paper);
+    color: var(--ink);
+}
+
+.sb-sort-btn.active {
+    color: var(--accent);
+    font-weight: 600;
+    background: #f0ebe8;
+}
+
 .sb-clear {
     display: block;
     text-align: center;
@@ -246,12 +363,10 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     text-decoration: none;
     transition: color .15s;
 }
-.sb-clear:hover { color: var(--accent); }
 
-/* ════════════════════════════════
-   RIGHT: TOP BAR + CARDS
-════════════════════════════════ */
-.content-wrap {}
+.sb-clear:hover {
+    color: var(--accent);
+}
 
 .top-bar {
     display: flex;
@@ -261,25 +376,30 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     flex-wrap: wrap;
     gap: .5rem;
 }
+
 .top-bar-title {
     font-family: var(--serif);
     font-size: 1.25rem;
     font-weight: 700;
     color: var(--ink);
 }
+
 .top-bar-count {
     font-size: .82rem;
     color: var(--mute);
 }
-.top-bar-count strong { color: var(--ink); }
 
-/* Active filters chips */
+.top-bar-count strong {
+    color: var(--ink);
+}
+
 .filter-chips {
     display: flex;
     flex-wrap: wrap;
     gap: .35rem;
     margin-bottom: .85rem;
 }
+
 .chip {
     display: inline-flex;
     align-items: center;
@@ -291,10 +411,17 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     font-size: .72rem;
     font-weight: 500;
 }
-.chip a { color: var(--accent); text-decoration: none; font-weight: 700; }
 
-/* ── Activity cards ── */
-.act-list { display: grid; gap: 1rem; }
+.chip a {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 700;
+}
+
+.act-list {
+    display: grid;
+    gap: 1rem;
+}
 
 .act-card {
     background: var(--white);
@@ -308,13 +435,28 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     animation: fadeUp .35s ease both;
     box-shadow: 0 1px 8px rgba(0,0,0,.05);
 }
+
 .act-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 24px rgba(0,0,0,.1);
 }
-@keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
 
-.act-body { padding: 1.1rem 1.25rem; min-width: 0; }
+@keyframes fadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.act-body {
+    padding: 1.1rem 1.25rem;
+    min-width: 0;
+}
 
 .act-org {
     display: flex;
@@ -323,16 +465,22 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     margin-bottom: .5rem;
     flex-wrap: wrap;
 }
+
 .act-org-avatar {
-    width: 24px; height: 24px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
     object-fit: cover;
     border: 1px solid var(--border);
     flex-shrink: 0;
 }
-.act-org-name { font-size: .75rem; font-weight: 500; color: var(--soft); }
 
-/* 小標籤 */
+.act-org-name {
+    font-size: .75rem;
+    font-weight: 500;
+    color: var(--soft);
+}
+
 .tag {
     display: inline-block;
     padding: .15rem .55rem;
@@ -341,10 +489,26 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     font-weight: 600;
     line-height: 1.5;
 }
-.tag-free   { background: #e6f4ec; color: #1e7a47; }
-.tag-paid   { background: #fff4e5; color: #b06000; }
-.tag-soon   { background: #fff0ec; color: #c8502a; }
-.tag-closed { background: #f0f0f0; color: #999; }
+
+.tag-free {
+    background: #e6f4ec;
+    color: #1e7a47;
+}
+
+.tag-paid {
+    background: #fff4e5;
+    color: #b06000;
+}
+
+.tag-soon {
+    background: #fff0ec;
+    color: #c8502a;
+}
+
+.tag-closed {
+    background: #f0f0f0;
+    color: #999;
+}
 
 .act-title {
     font-family: var(--serif);
@@ -354,6 +518,7 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     margin-bottom: .4rem;
     line-height: 1.4;
 }
+
 .act-desc {
     font-size: .8rem;
     color: var(--soft);
@@ -364,6 +529,7 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     overflow: hidden;
     margin-bottom: .75rem;
 }
+
 .act-meta {
     display: flex;
     flex-wrap: wrap;
@@ -371,24 +537,37 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     font-size: .74rem;
     color: var(--mute);
 }
-.act-meta-item { display: flex; align-items: center; gap: .25rem; }
-.act-meta-item svg { width: 12px; height: 12px; flex-shrink: 0; }
 
-/* 卡片右側圖 */
+.act-meta-item {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+}
+
+.act-meta-item svg {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+}
+
 .act-img {
     overflow: hidden;
     grid-row: 1;
     grid-column: 2;
 }
+
 .act-img img {
-    width: 100%; height: 100%;
+    width: 100%;
+    height: 100%;
     object-fit: cover;
     display: block;
     transition: transform .4s;
 }
-.act-card:hover .act-img img { transform: scale(1.05); }
 
-/* 卡片底部 */
+.act-card:hover .act-img img {
+    transform: scale(1.05);
+}
+
 .act-footer {
     grid-column: 1 / -1;
     display: flex;
@@ -402,9 +581,23 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     flex-wrap: wrap;
     gap: .4rem;
 }
-.act-footer-left { display: flex; align-items: center; gap: .35rem; }
-.act-footer-left svg { width: 12px; height: 12px; }
-.act-footer-right { display: flex; align-items: center; gap: .5rem; }
+
+.act-footer-left {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+}
+
+.act-footer-left svg {
+    width: 12px;
+    height: 12px;
+}
+
+.act-footer-right {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
 
 .view-btn {
     display: inline-flex;
@@ -419,14 +612,24 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     text-decoration: none;
     transition: background .18s;
 }
-.view-btn:hover { background: var(--accent); color: #fff; }
-.view-btn.closed { background: #e0e0e0; color: #aaa; pointer-events: none; }
+
+.view-btn:hover {
+    background: var(--accent);
+    color: #fff;
+}
+
+.view-btn.closed {
+    background: #e0e0e0;
+    color: #aaa;
+    pointer-events: none;
+}
 
 .bookmark-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 30px; height: 30px;
+    width: 30px;
+    height: 30px;
     border-radius: 6px;
     border: 1px solid var(--border);
     background: #fff;
@@ -435,301 +638,583 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     transition: all .18s;
     flex-shrink: 0;
 }
-.bookmark-btn:hover { border-color: var(--accent); color: var(--accent); }
-.bookmark-btn.saved { background: var(--accent); border-color: var(--accent); color: #fff; }
-.bookmark-btn svg { width: 14px; height: 14px; }
 
-/* Empty */
+.bookmark-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.bookmark-btn.saved {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+.bookmark-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
 .act-empty {
     text-align: center;
     padding: 4rem 1rem;
     color: var(--mute);
 }
-.act-empty svg { width: 48px; height: 48px; margin-bottom: 1rem; }
-.act-empty h3 { font-family: var(--serif); font-size: 1.1rem; color: var(--soft); margin-bottom: .4rem; }
+
+.act-empty svg {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 1rem;
+}
+
+.act-empty h3 {
+    font-family: var(--serif);
+    font-size: 1.1rem;
+    color: var(--soft);
+    margin-bottom: .4rem;
+}
 
 @media (max-width: 768px) {
-    .page-wrap { grid-template-columns: 1fr; }
-    .sidebar { position: static; }
-    .act-card { grid-template-columns: 1fr; }
-    .act-img { height: 160px; grid-column: 1; grid-row: auto; }
+    .page-wrap {
+        grid-template-columns: 1fr;
+    }
+
+    .sidebar {
+        position: static;
+    }
+
+    .act-card {
+        grid-template-columns: 1fr;
+    }
+
+    .act-img {
+        height: 160px;
+        grid-column: 1;
+        grid-row: auto;
+    }
 }
 </style>
 
 <div class="page-wrap">
-    <!-- ══════════════ LEFT SIDEBAR ══════════════ -->
+
     <aside class="sidebar">
 
-        <!-- 搜尋 -->
         <div class="sidebar-section">
             <div class="sidebar-heading">搜尋活動</div>
+
             <form method="GET" action="">
-                <?php if ($filter_cat):  ?><input type="hidden" name="cat"     value="<?= htmlspecialchars($filter_cat) ?>"><?php endif; ?>
-                <?php if ($filter_club): ?><input type="hidden" name="club"    value="<?= htmlspecialchars($filter_club) ?>"><?php endif; ?>
-                <?php if ($filter_fee):  ?><input type="hidden" name="fee"     value="<?= htmlspecialchars($filter_fee) ?>"><?php endif; ?>
+                <?php if ($filter_cat): ?>
+                    <input type="hidden" name="cat" value="<?= htmlspecialchars($filter_cat) ?>">
+                <?php endif; ?>
+
+                <?php if ($filter_club): ?>
+                    <input type="hidden" name="club" value="<?= htmlspecialchars($filter_club) ?>">
+                <?php endif; ?>
+
+                <?php if ($filter_fee): ?>
+                    <input type="hidden" name="fee" value="<?= htmlspecialchars($filter_fee) ?>">
+                <?php endif; ?>
+
+                <?php if ($filter_subscribed): ?>
+                    <input type="hidden" name="subscribed" value="1">
+                <?php endif; ?>
+
                 <input type="hidden" name="sort_by" value="<?= htmlspecialchars($sort_by) ?>">
+
                 <div class="sb-search">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-                    <input type="text" name="search" placeholder="搜尋活動名稱…" value="<?= htmlspecialchars($search) ?>">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="M21 21l-4.35-4.35"/>
+                    </svg>
+
+                    <input 
+                        type="text" 
+                        name="search" 
+                        placeholder="搜尋活動名稱…" 
+                        value="<?= htmlspecialchars($search) ?>"
+                    >
                 </div>
             </form>
         </div>
 
-        <!-- 社團分類 -->
         <div class="sidebar-section">
             <div class="sidebar-heading">社團分類</div>
-            <!-- 已訂閱社團篩選 -->
-            <a href="activities.php?<?= qsMerge(['subscribed'=>$filter_subscribed?'':'1','cat'=>'','club'=>'','sort_by'=>$sort_by,'search'=>$search,'fee'=>$filter_fee]) ?>"
-               class="sb-link <?= $filter_subscribed ? 'active' : '' ?>" style="gap:.4rem;">
+
+            <a 
+                href="activities.php?<?= qsMerge([
+                    'subscribed' => $filter_subscribed ? '' : '1',
+                    'cat' => '',
+                    'club' => '',
+                    'sort_by' => $sort_by,
+                    'search' => $search,
+                    'fee' => $filter_fee
+                ]) ?>"
+                class="sb-link <?= $filter_subscribed ? 'active' : '' ?>"
+            >
                 <span style="display:flex;align-items:center;gap:.4rem;">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                        <path d="M13.73 21a2 2 0 01-3.46 0"/>
+                    </svg>
                     已訂閱社團
                 </span>
             </a>
-            <!-- 所有活動 -->
-            <a href="activities.php?<?= qsMerge(['cat'=>'','club'=>'','subscribed'=>'','sort_by'=>$sort_by,'search'=>$search,'fee'=>$filter_fee]) ?>"
-               class="sb-link <?= $filter_cat === '' && !$filter_subscribed ? 'active' : '' ?>">
+
+            <a 
+                href="activities.php?<?= qsMerge([
+                    'cat' => '',
+                    'club' => '',
+                    'subscribed' => '',
+                    'sort_by' => $sort_by,
+                    'search' => $search,
+                    'fee' => $filter_fee
+                ]) ?>"
+                class="sb-link <?= $filter_cat === '' && !$filter_subscribed ? 'active' : '' ?>"
+            >
                 所有活動
             </a>
+
             <?php foreach ($club_categories as $cat): ?>
-            <a href="activities.php?<?= qsMerge(['cat'=>$cat,'club'=>'','subscribed'=>'','sort_by'=>$sort_by,'search'=>$search,'fee'=>$filter_fee]) ?>"
-               class="sb-link <?= $filter_cat === $cat ? 'active' : '' ?>">
-                <?= htmlspecialchars($cat) ?>
-            </a>
+                <a 
+                    href="activities.php?<?= qsMerge([
+                        'cat' => $cat,
+                        'club' => '',
+                        'subscribed' => '',
+                        'sort_by' => $sort_by,
+                        'search' => $search,
+                        'fee' => $filter_fee
+                    ]) ?>"
+                    class="sb-link <?= $filter_cat === $cat ? 'active' : '' ?>"
+                >
+                    <?= htmlspecialchars($cat) ?>
+
+                    <?php if (isset($cat_counts[$cat])): ?>
+                        <span class="cnt"><?= htmlspecialchars($cat_counts[$cat]) ?></span>
+                    <?php endif; ?>
+                </a>
             <?php endforeach; ?>
         </div>
 
-        <!-- 費用篩選 -->
         <div class="sidebar-section">
             <div class="sidebar-heading">費用</div>
+
             <div class="sb-radio-group">
                 <form method="GET" id="feeForm">
-                    <?php if ($filter_cat):  ?><input type="hidden" name="cat"     value="<?= htmlspecialchars($filter_cat) ?>"><?php endif; ?>
-                    <?php if ($filter_club): ?><input type="hidden" name="club"    value="<?= htmlspecialchars($filter_club) ?>"><?php endif; ?>
-                    <?php if ($search):      ?><input type="hidden" name="search"  value="<?= htmlspecialchars($search) ?>"><?php endif; ?>
+
+                    <?php if ($filter_cat): ?>
+                        <input type="hidden" name="cat" value="<?= htmlspecialchars($filter_cat) ?>">
+                    <?php endif; ?>
+
+                    <?php if ($filter_club): ?>
+                        <input type="hidden" name="club" value="<?= htmlspecialchars($filter_club) ?>">
+                    <?php endif; ?>
+
+                    <?php if ($search): ?>
+                        <input type="hidden" name="search" value="<?= htmlspecialchars($search) ?>">
+                    <?php endif; ?>
+
+                    <?php if ($filter_subscribed): ?>
+                        <input type="hidden" name="subscribed" value="1">
+                    <?php endif; ?>
+
                     <input type="hidden" name="sort_by" value="<?= htmlspecialchars($sort_by) ?>">
+
                     <label class="sb-radio">
-                        <input type="radio" name="fee" value="" <?= $filter_fee === '' ? 'checked' : '' ?> onchange="this.form.submit()"> 全部
+                        <input 
+                            type="radio" 
+                            name="fee" 
+                            value="" 
+                            <?= $filter_fee === '' ? 'checked' : '' ?> 
+                            onchange="this.form.submit()"
+                        >
+                        全部
                     </label>
+
                     <label class="sb-radio">
-                        <input type="radio" name="fee" value="free" <?= $filter_fee === 'free' ? 'checked' : '' ?> onchange="this.form.submit()"> 免費活動
+                        <input 
+                            type="radio" 
+                            name="fee" 
+                            value="free" 
+                            <?= $filter_fee === 'free' ? 'checked' : '' ?> 
+                            onchange="this.form.submit()"
+                        >
+                        免費活動
                     </label>
+
                     <label class="sb-radio">
-                        <input type="radio" name="fee" value="paid" <?= $filter_fee === 'paid' ? 'checked' : '' ?> onchange="this.form.submit()"> 需收費
+                        <input 
+                            type="radio" 
+                            name="fee" 
+                            value="paid" 
+                            <?= $filter_fee === 'paid' ? 'checked' : '' ?> 
+                            onchange="this.form.submit()"
+                        >
+                        需收費
                     </label>
                 </form>
             </div>
         </div>
 
-        <!-- 排序 -->
         <div class="sidebar-section">
             <div class="sidebar-heading">排序方式</div>
+
             <div class="sb-sort-group">
                 <?php
-                $sorts = ['created_at'=>'依發佈時間（新→舊）','event_start'=>'依活動時間','signup_deadline'=>'依報名截止'];
+                $sorts = [
+                    'created_at' => '依發佈時間（新→舊）',
+                    'event_start' => '依活動時間',
+                    'signup_deadline' => '依報名截止'
+                ];
+
                 foreach ($sorts as $val => $label):
                 ?>
-                <a href="activities.php?<?= qsMerge(['sort_by'=>$val]) ?>"
-                   class="sb-sort-btn <?= $sort_by === $val ? 'active' : '' ?>">
-                    <?= $label ?>
-                </a>
+                    <a 
+                        href="activities.php?<?= qsMerge(['sort_by' => $val]) ?>"
+                        class="sb-sort-btn <?= $sort_by === $val ? 'active' : '' ?>"
+                    >
+                        <?= htmlspecialchars($label) ?>
+                    </a>
                 <?php endforeach; ?>
             </div>
         </div>
 
-        <!-- 清除 -->
-        <?php if ($filter_cat || $filter_club || $filter_fee || $search): ?>
-        <a href="activities.php" class="sb-clear">✕ 清除所有篩選</a>
+        <?php if ($filter_cat || $filter_club || $filter_fee || $search || $filter_subscribed): ?>
+            <a href="activities.php" class="sb-clear">✕ 清除所有篩選</a>
         <?php endif; ?>
 
     </aside>
 
-    <!-- ══════════════ RIGHT CONTENT ══════════════ -->
     <div class="content-wrap">
 
-        <!-- Top bar -->
         <div class="top-bar">
             <div>
                 <div class="top-bar-title">
                     <?php
-                    if ($filter_subscribed) echo '已訂閱社團活動';
-                    elseif ($filter_cat) echo htmlspecialchars($filter_cat);
-                    else echo '所有活動';
+                    if ($filter_subscribed) {
+                        echo '已訂閱社團活動';
+                    } elseif ($filter_cat) {
+                        echo htmlspecialchars($filter_cat);
+                    } else {
+                        echo '所有活動';
+                    }
                     ?>
                 </div>
-                <div class="top-bar-count">共 <strong><?= count($activities) ?></strong> 項活動</div>
+
+                <div class="top-bar-count">
+                    共 <strong><?= count($activities) ?></strong> 項活動
+                </div>
             </div>
         </div>
 
-        <!-- Active filter chips -->
         <?php
         $hasFilter = $filter_cat || $filter_club || $filter_fee || $search || $filter_subscribed;
-        if ($hasFilter): ?>
-        <div class="filter-chips">
-            <?php if ($filter_subscribed): ?>
-            <span class="chip">
-                已訂閱社團
-                <a href="activities.php?<?= qsMerge(['subscribed'=>'']) ?>">✕</a>
-            </span>
-            <?php endif; ?>
-            <?php if ($filter_cat): ?>
-            <span class="chip">
-                分類：<?= htmlspecialchars($filter_cat) ?>
-                <a href="activities.php?<?= qsMerge(['cat'=>'','club'=>'']) ?>">✕</a>
-            </span>
-            <?php endif; ?>
-            <?php if ($filter_club): ?>
-            <span class="chip">
-                社團：<?= htmlspecialchars($filter_club) ?>
-                <a href="activities.php?<?= qsMerge(['club'=>'']) ?>">✕</a>
-            </span>
-            <?php endif; ?>
-            <?php if ($filter_fee === 'free'): ?>
-            <span class="chip">免費 <a href="activities.php?<?= qsMerge(['fee'=>'']) ?>">✕</a></span>
-            <?php elseif ($filter_fee === 'paid'): ?>
-            <span class="chip">需收費 <a href="activities.php?<?= qsMerge(['fee'=>'']) ?>">✕</a></span>
-            <?php endif; ?>
-            <?php if ($search): ?>
-            <span class="chip">「<?= htmlspecialchars($search) ?>」 <a href="activities.php?<?= qsMerge(['search'=>'']) ?>">✕</a></span>
-            <?php endif; ?>
-        </div>
+        ?>
+
+        <?php if ($hasFilter): ?>
+            <div class="filter-chips">
+
+                <?php if ($filter_subscribed): ?>
+                    <span class="chip">
+                        已訂閱社團
+                        <a href="activities.php?<?= qsMerge(['subscribed' => '']) ?>">✕</a>
+                    </span>
+                <?php endif; ?>
+
+                <?php if ($filter_cat): ?>
+                    <span class="chip">
+                        分類：<?= htmlspecialchars($filter_cat) ?>
+                        <a href="activities.php?<?= qsMerge(['cat' => '', 'club' => '']) ?>">✕</a>
+                    </span>
+                <?php endif; ?>
+
+                <?php if ($filter_club): ?>
+                    <span class="chip">
+                        社團：<?= htmlspecialchars($filter_club) ?>
+                        <a href="activities.php?<?= qsMerge(['club' => '']) ?>">✕</a>
+                    </span>
+                <?php endif; ?>
+
+                <?php if ($filter_fee === 'free'): ?>
+                    <span class="chip">
+                        免費
+                        <a href="activities.php?<?= qsMerge(['fee' => '']) ?>">✕</a>
+                    </span>
+                <?php elseif ($filter_fee === 'paid'): ?>
+                    <span class="chip">
+                        需收費
+                        <a href="activities.php?<?= qsMerge(['fee' => '']) ?>">✕</a>
+                    </span>
+                <?php endif; ?>
+
+                <?php if ($search): ?>
+                    <span class="chip">
+                        「<?= htmlspecialchars($search) ?>」
+                        <a href="activities.php?<?= qsMerge(['search' => '']) ?>">✕</a>
+                    </span>
+                <?php endif; ?>
+
+            </div>
         <?php endif; ?>
 
-        <!-- Cards -->
         <?php if (empty($activities)): ?>
-        <div class="act-empty">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-            </svg>
-            <h3>找不到符合條件的活動</h3>
-            <p>請調整篩選條件，或 <a href="activities.php" style="color:var(--accent)">查看全部活動</a></p>
-        </div>
+
+            <div class="act-empty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                </svg>
+
+                <h3>找不到符合條件的活動</h3>
+                <p>
+                    請調整篩選條件，或
+                    <a href="activities.php" style="color:var(--accent)">查看全部活動</a>
+                </p>
+            </div>
+
         <?php else: ?>
-        <div class="act-list">
-            <?php foreach ($activities as $i => $act):
-                $free   = isFree($act['fee']);
-                $soon   = isDeadlineSoon($act['signup_deadline']);
-                $closed = isDeadlinePassed($act['signup_deadline']);
-                $img    = !empty($act['club_image'])
-                    ? $act['club_image']
-                    : 'https://images.unsplash.com/photo-1507838153414-b4b713384a76?auto=format&fit=crop&w=800&q=80';
-            ?>
-            <article class="act-card" style="animation-delay:<?= $i * 0.05 ?>s">
 
-                <div class="act-body">
-                    <div class="act-org">
-                        <img class="act-org-avatar" src="<?= htmlspecialchars($img) ?>" alt="">
-                        <span class="act-org-name"><?= htmlspecialchars($act['organizer']) ?></span>
-                        <?php if (!empty($act['club_category'])): ?>
-                        <a href="activities.php?<?= qsMerge(['cat'=>$act['club_category'],'club'=>'']) ?>"
-                           style="font-size:.65rem;color:var(--mute);text-decoration:none;border:1px solid var(--border);border-radius:99px;padding:.1rem .45rem;"
-                           title="篩選此分類">
-                            <?= htmlspecialchars($act['club_category']) ?>
-                        </a>
-                        <?php endif; ?>
-                        <?php if ($free): ?>
-                            <span class="tag tag-free">免費</span>
-                        <?php else: ?>
-                            <span class="tag tag-paid"><?= htmlspecialchars($act['fee']) ?></span>
-                        <?php endif; ?>
-                        <?php if ($closed): ?>
-                            <span class="tag tag-closed">已截止</span>
-                        <?php elseif ($soon): ?>
-                            <span class="tag tag-soon">即將截止</span>
-                        <?php endif; ?>
-                    </div>
+            <div class="act-list">
 
-                    <h2 class="act-title"><?= htmlspecialchars($act['title']) ?></h2>
-                    <p class="act-desc"><?= htmlspecialchars($act['description']) ?></p>
+                <?php foreach ($activities as $i => $act): ?>
+                    <?php
+                    $free = isFree($act['fee'] ?? '');
+                    $soon = isDeadlineSoon($act['signup_deadline'] ?? '');
+                    $closed = isDeadlinePassed($act['signup_deadline'] ?? '');
 
-                    <div class="act-meta">
-                        <span class="act-meta-item">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-                            <?= formatDateTime($act['event_start']) ?>
-                            <?php if (!empty($act['event_end'])): ?> – <?= date('H:i', strtotime($act['event_end'])) ?><?php endif; ?>
-                        </span>
-                        <span class="act-meta-item">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                            <?= htmlspecialchars($act['location']) ?>
-                        </span>
-                    </div>
-                </div>
+                    $img = !empty($act['club_image'])
+                        ? $act['club_image']
+                        : 'https://images.unsplash.com/photo-1507838153414-b4b713384a76?auto=format&fit=crop&w=800&q=80';
 
-                <div class="act-img">
-                    <img src="<?= htmlspecialchars($img) ?>" alt="<?= htmlspecialchars($act['title']) ?>">
-                </div>
+                    $isFavorited = !empty($act['is_favorited']);
+                    ?>
 
-                <div class="act-footer">
-                    <span class="act-footer-left">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-                        報名截止：<?= formatDate($act['signup_deadline']) ?>
-                        &nbsp;·&nbsp; 發佈於 <?= formatDate($act['created_at']) ?>
-                    </span>
-                    <span class="act-footer-right">
-                        <button class="bookmark-btn" data-id="<?= $act['id'] ?>" title="收藏" onclick="toggleBookmark(this)">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
-                        </button>
-                        <a href="activity_view.php?id=<?= $act['id'] ?>" class="view-btn <?= $closed ? 'closed' : '' ?>">
-                            <?= $closed ? '已截止' : '查看詳情' ?>
-                            <?php if (!$closed): ?>
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                            <?php endif; ?>
-                        </a>
-                    </span>
-                </div>
-            </article>
-            <?php endforeach; ?>
-        </div>
+                    <article class="act-card" style="animation-delay:<?= $i * 0.05 ?>s">
+
+                        <div class="act-body">
+
+                            <div class="act-org">
+                                <img 
+                                    class="act-org-avatar" 
+                                    src="<?= htmlspecialchars($img) ?>" 
+                                    alt=""
+                                >
+
+                                <span class="act-org-name">
+                                    <?= htmlspecialchars($act['organizer'] ?? $act['club_name'] ?? '未指定社團') ?>
+                                </span>
+
+                                <?php if (!empty($act['club_category'])): ?>
+                                    <a 
+                                        href="activities.php?<?= qsMerge(['cat' => $act['club_category'], 'club' => '']) ?>"
+                                        style="font-size:.65rem;color:var(--mute);text-decoration:none;border:1px solid var(--border);border-radius:99px;padding:.1rem .45rem;"
+                                        title="篩選此分類"
+                                    >
+                                        <?= htmlspecialchars($act['club_category']) ?>
+                                    </a>
+                                <?php endif; ?>
+
+                                <?php if ($free): ?>
+                                    <span class="tag tag-free">免費</span>
+                                <?php else: ?>
+                                    <span class="tag tag-paid">
+                                        <?= htmlspecialchars($act['fee'] ?? '未設定') ?>
+                                    </span>
+                                <?php endif; ?>
+
+                                <?php if ($closed): ?>
+                                    <span class="tag tag-closed">已截止</span>
+                                <?php elseif ($soon): ?>
+                                    <span class="tag tag-soon">即將截止</span>
+                                <?php endif; ?>
+                            </div>
+
+                            <h2 class="act-title">
+                                <?= htmlspecialchars($act['title'] ?? '未命名活動') ?>
+                            </h2>
+
+                            <p class="act-desc">
+                                <?= htmlspecialchars($act['description'] ?? '') ?>
+                            </p>
+
+                            <div class="act-meta">
+
+                                <span class="act-meta-item">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="4" width="18" height="18" rx="2"/>
+                                        <path d="M16 2v4M8 2v4M3 10h18"/>
+                                    </svg>
+
+                                    <?= formatDateTime($act['event_start'] ?? '') ?>
+
+                                    <?php if (!empty($act['event_end'])): ?>
+                                        – <?= date('H:i', strtotime($act['event_end'])) ?>
+                                    <?php endif; ?>
+                                </span>
+
+                                <span class="act-meta-item">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/>
+                                        <circle cx="12" cy="10" r="3"/>
+                                    </svg>
+
+                                    <?= htmlspecialchars($act['location'] ?? '未設定地點') ?>
+                                </span>
+
+                            </div>
+                        </div>
+
+                        <div class="act-img">
+                            <img 
+                                src="<?= htmlspecialchars($img) ?>" 
+                                alt="<?= htmlspecialchars($act['title'] ?? '活動圖片') ?>"
+                            >
+                        </div>
+
+                        <div class="act-footer">
+
+                            <span class="act-footer-left">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <path d="M12 8v4l3 3"/>
+                                </svg>
+
+                                報名截止：<?= formatDate($act['signup_deadline'] ?? '') ?>
+                                &nbsp;·&nbsp;
+                                發佈於 <?= formatDate($act['created_at'] ?? '') ?>
+                            </span>
+
+                            <span class="act-footer-right">
+
+                                <button 
+                                    class="bookmark-btn <?= $isFavorited ? 'saved' : '' ?>"
+                                    data-type="activity"
+                                    data-id="<?= htmlspecialchars($act['id']) ?>"
+                                    title="<?= $isFavorited ? '取消收藏' : '收藏' ?>"
+                                    onclick="toggleFavorite(this)"
+                                >
+                                    <svg 
+                                        viewBox="0 0 24 24"
+                                        fill="<?= $isFavorited ? 'currentColor' : 'none' ?>"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                    >
+                                        <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
+                                    </svg>
+                                </button>
+
+                                <a 
+                                    href="activity_view.php?id=<?= htmlspecialchars($act['id']) ?>"
+                                    class="view-btn <?= $closed ? 'closed' : '' ?>"
+                                >
+                                    <?= $closed ? '已截止' : '查看詳情' ?>
+
+                                    <?php if (!$closed): ?>
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                                        </svg>
+                                    <?php endif; ?>
+                                </a>
+
+                            </span>
+
+                        </div>
+
+                    </article>
+                <?php endforeach; ?>
+
+            </div>
+
         <?php endif; ?>
 
-    </div><!-- /content-wrap -->
-</div><!-- /page-wrap -->
+    </div>
+
+</div>
 
 <script>
-const BOOKMARK_KEY = 'fju_bookmarked_activities';
-function getBookmarks() { return JSON.parse(localStorage.getItem(BOOKMARK_KEY) || '[]'); }
-function saveBookmarks(a) { localStorage.setItem(BOOKMARK_KEY, JSON.stringify(a)); }
+function toggleFavorite(btn) {
+    const itemId = btn.dataset.id;
+    const itemType = btn.dataset.type;
 
-document.addEventListener('DOMContentLoaded', () => {
-    const saved = getBookmarks();
-    document.querySelectorAll('.bookmark-btn').forEach(btn => {
-        if (saved.includes(Number(btn.dataset.id))) {
-            btn.classList.add('saved');
-            btn.querySelector('svg').setAttribute('fill', 'currentColor');
+    fetch("api/toggle_favorite.php", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body:
+            "item_id=" + encodeURIComponent(itemId) +
+            "&item_type=" + encodeURIComponent(itemType)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (!data.success) {
+            alert(data.message);
+            return;
         }
-    });
-});
 
-function toggleBookmark(btn) {
-    const id  = Number(btn.dataset.id);
-    let saved = getBookmarks();
-    const idx = saved.indexOf(id);
-    if (idx === -1) {
-        saved.push(id);
-        btn.classList.add('saved');
-        btn.querySelector('svg').setAttribute('fill', 'currentColor');
-        showToast('已加入收藏 🔖');
-    } else {
-        saved.splice(idx, 1);
-        btn.classList.remove('saved');
-        btn.querySelector('svg').setAttribute('fill', 'none');
-        showToast('已移除收藏');
-    }
-    saveBookmarks(saved);
+        const icon = btn.querySelector("svg");
+
+        if (data.favorited) {
+            btn.classList.add("saved");
+            btn.title = "取消收藏";
+
+            if (icon) {
+                icon.setAttribute("fill", "currentColor");
+            }
+
+            showToast("已加入收藏 🔖");
+        } else {
+            btn.classList.remove("saved");
+            btn.title = "收藏";
+
+            if (icon) {
+                icon.setAttribute("fill", "none");
+            }
+
+            showToast("已取消收藏");
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert("收藏操作失敗");
+    });
 }
 
 function showToast(msg) {
-    let t = document.getElementById('act-toast');
+    let t = document.getElementById("favorite-toast");
+
     if (!t) {
-        t = document.createElement('div'); t.id = 'act-toast';
-        t.style.cssText = 'position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;background:#1a1a2e;color:#fff;padding:.55rem 1.1rem;border-radius:8px;font-size:.8rem;font-weight:500;box-shadow:0 4px 16px rgba(0,0,0,.2);transition:opacity .3s;opacity:0;pointer-events:none;';
+        t = document.createElement("div");
+        t.id = "favorite-toast";
+        t.style.cssText = `
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            z-index: 9999;
+            background: #1a1a2e;
+            color: #fff;
+            padding: .55rem 1.1rem;
+            border-radius: 8px;
+            font-size: .8rem;
+            font-weight: 500;
+            box-shadow: 0 4px 16px rgba(0,0,0,.2);
+            transition: opacity .3s;
+            opacity: 0;
+            pointer-events: none;
+        `;
+
         document.body.appendChild(t);
     }
-    t.textContent = msg; t.style.opacity = '1';
-    clearTimeout(t._t);
-    t._t = setTimeout(() => { t.style.opacity = '0'; }, 2000);
+
+    t.textContent = msg;
+    t.style.opacity = "1";
+
+    clearTimeout(t._timer);
+
+    t._timer = setTimeout(() => {
+        t.style.opacity = "0";
+    }, 2000);
 }
 </script>
+
 <?php include 'footer.php'; ?>
 </body>
 </html>
