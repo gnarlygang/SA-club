@@ -1,7 +1,5 @@
 <?php
 session_start();
-$_SESSION['role'] = 0; // 強制把當前狀態改為訪客
-$role = 0;
 
 require_once "api/db.php";
 
