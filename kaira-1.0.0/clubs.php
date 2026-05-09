@@ -14,13 +14,12 @@ $cat    = $_GET['cat']    ?? '';
 $search = trim($_GET['search'] ?? '');
 
 $clubs = [];
-$subscribed_ids = []; // 目前登入者已訂閱的社團 id 清單
+$subscribed_ids = [];
 
 if ($pdo) {
     $params = [];
 
     if ($search !== '') {
-        // 拆成單字
         $chars = [];
         $len = mb_strlen($search, 'UTF-8');
         for ($i = 0; $i < $len; $i++) {
@@ -57,7 +56,6 @@ if ($pdo) {
         $sql .= " GROUP BY c.id ORDER BY c.category, c.id ASC";
 
     } else {
-        // 無搜尋，依分類篩選
         if ($cat && in_array($cat, $categories)) {
             $sql = "
                 SELECT c.*, GROUP_CONCAT(ct.tag_name ORDER BY ct.id SEPARATOR ',') AS tags
@@ -193,7 +191,6 @@ body { font-family: "Microsoft JhengHei", sans-serif; background: #f8f9fa; }
     border: 1.5px solid #1a1a2e; background: transparent; color: #1a1a2e;
     cursor: pointer; transition: all .18s;
     white-space: nowrap;
-    /* 阻止點擊後跳到 club_detail.php */
     position: relative; z-index: 2;
 }
 .sub-btn:hover        { background: #1a1a2e; color: #fff; }
@@ -203,9 +200,7 @@ body { font-family: "Microsoft JhengHei", sans-serif; background: #f8f9fa; }
 .empty-state { text-align:center; padding:4rem 1rem; color:#aaa; grid-column:1/-1; }
 .empty-state i { font-size:3rem; margin-bottom:1rem; display:block; }
 
-
-
-/* toast */
+/* ── Toast ── */
 #sub-toast {
     position:fixed; bottom:1.5rem; right:1.5rem; z-index:9999;
     background:#1a1a2e; color:#fff; padding:.55rem 1.1rem;
@@ -277,10 +272,10 @@ body { font-family: "Microsoft JhengHei", sans-serif; background: #f8f9fa; }
     </div>
     <?php else: ?>
     <?php foreach ($clubs as $i => $club):
-        $tags      = $club['tags'] ? explode(',', $club['tags']) : [];
-        $hasImg    = !empty($club['image']);
-        $catCls    = 'cat-' . $club['category'];
-        $isSub     = in_array($club['id'], $subscribed_ids);
+        $tags   = $club['tags'] ? explode(',', $club['tags']) : [];
+        $hasImg = !empty($club['image']);
+        $catCls = 'cat-' . $club['category'];
+        $isSub  = in_array($club['id'], $subscribed_ids);
     ?>
     <a href="club_detail.php?id=<?= $club['id'] ?>" class="club-card" style="animation-delay:<?= min($i,20)*0.04 ?>s">
         <?php if ($hasImg): ?>
@@ -328,7 +323,7 @@ body { font-family: "Microsoft JhengHei", sans-serif; background: #f8f9fa; }
 
 <script>
 function toggleSub(e, btn) {
-    e.preventDefault();   // 阻止跳頁
+    e.preventDefault();
     e.stopPropagation();
 
     const clubId = btn.dataset.clubId;
@@ -341,8 +336,6 @@ function toggleSub(e, btn) {
     .then(r => r.json())
     .then(data => {
         if (!data.success) { showToast(data.message); return; }
-
-        const icon = btn.querySelector("i");
         if (data.subscribed) {
             btn.classList.add("subscribed");
             btn.innerHTML = '<i class="bi bi-bell-fill"></i> 已訂閱';
