@@ -4,19 +4,28 @@ require_once "api/db.php";
 // --- 處理邏輯區 ---
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $title = trim($_POST['title'] ?? '');
-    $content = trim($_POST['content'] ?? '');
+$content = trim($_POST['content'] ?? '');
+$detail = trim($_POST['detail'] ?? '');
 
-    if (!empty($title) && !empty($content)) {
-        try {
-            $sql = "INSERT INTO announcements (title, content, date) VALUES (:title, :content, NOW())";
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([':title' => $title, ':content' => $content]);
-            echo "<script>alert('✅ 公告已成功發佈！'); window.location.href = 'index.php';</script>";
-            exit;
-        } catch (PDOException $e) {
-            $error_msg = "資料庫錯誤：" . $e->getMessage();
-        }
+if (!empty($title) && !empty($content) && !empty($detail)) {
+    try {
+        $sql = "INSERT INTO announcements (title, content, detail, date) 
+                VALUES (:title, :content, :detail, NOW())";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([
+            ':title' => $title,
+            ':content' => $content,
+            ':detail' => $detail
+        ]);
+
+        echo "<script>alert('✅ 公告已成功發佈！'); window.location.href = 'index.php';</script>";
+        exit;
+
+    } catch (PDOException $e) {
+        $error_msg = "資料庫錯誤：" . $e->getMessage();
     }
+}
 }
 
 ?>
@@ -40,26 +49,57 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </div>
 
         <form action="announcement.php" method="POST">
-            <div class="mb-4">
-                <label><i class="bi bi-type-h1 me-2"></i>公告標題</label>
-                <input type="text" name="title" class="form-control" placeholder="請輸入標題內容..." required>
-            </div>
+    <div class="mb-4">
+        <label>
+            <i class="bi bi-type-h1 me-2"></i>公告標題
+        </label>
+        <input 
+            type="text" 
+            name="title" 
+            class="form-control" 
+            placeholder="請輸入標題內容..." 
+            required
+        >
+    </div>
 
-            <div class="mb-4">
-                <label><i class="bi bi-justify-left me-2"></i>公告詳情</label>
-                <textarea name="content" class="form-control" rows="8" placeholder="請輸入詳細公告內容..." style="resize: none;" required></textarea>
-            </div>
+    <div class="mb-4">
+        <label>
+            <i class="bi bi-card-text me-2"></i>公告摘要
+        </label>
+        <textarea 
+            name="content" 
+            class="form-control" 
+            rows="4" 
+            placeholder="請輸入公告摘要內容..." 
+            style="resize: vertical;" 
+            required
+        ></textarea>
+    </div>
 
-            <button type="submit" class="btn-submit">
-                發佈公告 <i class="bi bi-send-check-fill ms-2"></i>
-            </button>
-            
-            <div class="btn-back-container">
-                <a href="index.php" class="btn-back">
-                    <i class="bi bi-chevron-left"></i> 返回後台首頁
-                </a>
-            </div>
-        </form>
+    <div class="mb-4">
+        <label>
+            <i class="bi bi-justify-left me-2"></i>公告詳情
+        </label>
+        <textarea 
+            name="detail" 
+            class="form-control detail-control" 
+            rows="8" 
+            placeholder="請輸入詳細公告內容..." 
+            style="resize: vertical;" 
+            required
+        ></textarea>
+    </div>
+
+    <button type="submit" class="btn-submit">
+        發佈公告 <i class="bi bi-send-check-fill ms-2"></i>
+    </button>
+    
+    <div class="btn-back-container">
+        <a href="index.php" class="btn-back">
+            <i class="bi bi-chevron-left"></i> 返回後台首頁
+        </a>
+    </div>
+</form>
     </div>
 </div>
 <?php require_once "footer.php"; ?>
