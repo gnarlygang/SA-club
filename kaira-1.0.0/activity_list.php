@@ -1,7 +1,21 @@
 <?php
 session_start();
+
 require_once "api/db.php";
 
+try {
+    // 取得該社團所有已發佈活動
+    $stmt = $pdo->prepare("
+        SELECT * FROM activities
+        WHERE user_id = :uid
+        ORDER BY created_at DESC
+    ");
+    $stmt->execute([":uid" => $_SESSION["user_id"] ?? null]);
+    $activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+} catch (PDOException $e) {
+    die("資料庫連線失敗：" . $e->getMessage());
+}
 
 function fmt_date($d) {
     if (!$d) return "—";
@@ -464,6 +478,7 @@ require_once "header.php";
 
   </div>
 </div>
+
 <?php require "footer.php"; ?>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

@@ -81,7 +81,7 @@ $username = $_SESSION['username'] ?? '';
         <!-- ===== 社團 ===== -->
         <?php elseif ($role == 2): ?>
             <li><a href="index.php">首頁</a></li>
-            <li><a href="edit_club.php">社團後台</a></li>
+            <li><a href="create_club.php">社團後台</a></li>
             <li><a href="activity_create.php">發布活動</a></li>
             <li><a href="activity_list.php">活動管理</a></li>
             <li><a href="forum.php">論壇</a></li>
