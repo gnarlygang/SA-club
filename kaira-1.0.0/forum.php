@@ -1,5 +1,12 @@
 <?php
 session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+$role = $_SESSION['role'] ?? 0;
+$search = trim($_GET['search'] ?? '');
+
 require_once "api/db.php";
 
 /*
@@ -275,7 +282,6 @@ require_once "header.php";
 }
 </style>
 </head>
-
 <body>
 
 <div class="forum-layout">
