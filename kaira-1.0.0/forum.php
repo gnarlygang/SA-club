@@ -2,7 +2,25 @@
 session_start();
 require_once "api/db.php";
 
+/*
+role 對應
+0 = 訪客
+1 = teacher
+2 = club
+3 = student
+4 = admin
+*/
+
 $current_user_id = $_SESSION['user_id'] ?? 0;
+$current_role = (int)($_SESSION['role'] ?? 0);
+
+$is_logged_in = !empty($_SESSION['user_id']);
+$is_student = $is_logged_in && $current_role === 3;
+$is_visitor = !$is_logged_in;
+
+// 只有學生跟訪客顯示收藏按鈕
+$show_favorite_btn = $is_student || $is_visitor;
+
 $search = trim($_GET['search'] ?? '');
 
 try {
@@ -44,7 +62,12 @@ try {
             GROUP BY fp.id
             ORDER BY fp.created_at DESC
         ");
-        $stmt->execute([':s1' => $like, ':s2' => $like, ':s3' => $like, ':uid' => $current_user_id]);
+        $stmt->execute([
+            ':s1' => $like,
+            ':s2' => $like,
+            ':s3' => $like,
+            ':uid' => $current_user_id
+        ]);
         $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $active_cat_name = "搜尋結果";
 
@@ -73,7 +96,10 @@ try {
             WHERE fp.category_id = :cat
             ORDER BY fp.created_at DESC
         ");
-        $stmt->execute([":cat" => $active_cat, ":uid" => $current_user_id]);
+        $stmt->execute([
+            ":cat" => $active_cat,
+            ":uid" => $current_user_id
+        ]);
         $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $active_cat_name = "";
@@ -120,18 +146,36 @@ require_once "header.php";
     border-radius: 10px;
     padding: .55rem .9rem;
 }
-.forum-search-box i { color: #8888aa; font-size: .9rem; flex-shrink: 0; }
+.forum-search-box i { 
+    color: #8888aa; 
+    font-size: .9rem; 
+    flex-shrink: 0; 
+}
 .forum-search-box input {
-    border: none; outline: none; background: transparent;
-    font-size: .85rem; width: 100%; color: #333;
+    border: none; 
+    outline: none; 
+    background: transparent;
+    font-size: .85rem; 
+    width: 100%; 
+    color: #333;
 }
-.forum-search-box input::placeholder { color: #aaa; }
+.forum-search-box input::placeholder { 
+    color: #aaa; 
+}
 .forum-search-box button {
-    border: none; background: none; cursor: pointer;
-    color: #8888aa; padding: 0; font-size: .9rem;
-    display: flex; align-items: center; flex-shrink: 0;
+    border: none; 
+    background: none; 
+    cursor: pointer;
+    color: #8888aa; 
+    padding: 0; 
+    font-size: .9rem;
+    display: flex; 
+    align-items: center; 
+    flex-shrink: 0;
 }
-.forum-search-box button:hover { color: #1a1a2e; }
+.forum-search-box button:hover { 
+    color: #1a1a2e; 
+}
 
 /* ── 搜尋 badge / 清除 ── */
 .search-badge {
@@ -145,7 +189,9 @@ require_once "header.php";
     text-decoration: none;
     margin-left: .4rem;
 }
-.clear-search:hover { color: #c8502a; }
+.clear-search:hover { 
+    color: #c8502a; 
+}
 
 /* ── 貼文 card ── */
 .post-card {
@@ -243,8 +289,12 @@ require_once "header.php";
                 <div class="forum-search-label">搜尋文章</div>
                 <form class="forum-search-box" method="GET" action="forum.php">
                     <i class="bi bi-search"></i>
-                    <input type="text" name="search" placeholder="搜尋文章、留言…"
-                           value="<?= htmlspecialchars($search) ?>">
+                    <input 
+                        type="text" 
+                        name="search" 
+                        placeholder="搜尋文章、留言…"
+                        value="<?= htmlspecialchars($search) ?>"
+                    >
                     <button type="submit">
                         <i class="bi bi-arrow-right-short" style="font-size:1.1rem"></i>
                     </button>
@@ -257,8 +307,10 @@ require_once "header.php";
 
             <div class="sidebar-list">
                 <?php foreach ($categories as $cat): ?>
-                    <a href="forum.php?cat=<?= htmlspecialchars($cat["id"]) ?>"
-                       class="sidebar-item <?= ((int)$cat["id"] === (int)$active_cat && $search === '') ? 'active' : '' ?>">
+                    <a 
+                        href="forum.php?cat=<?= htmlspecialchars($cat["id"]) ?>"
+                        class="sidebar-item <?= ((int)$cat["id"] === (int)$active_cat && $search === '') ? 'active' : '' ?>"
+                    >
                         <?= htmlspecialchars($cat["name"]) ?>
                     </a>
                 <?php endforeach; ?>
@@ -273,10 +325,14 @@ require_once "header.php";
         <div class="forum-header">
             <div>
                 <span class="forum-title"><?= htmlspecialchars($active_cat_name) ?></span>
+
                 <?php if ($search !== ''): ?>
                     <span class="search-badge">「<?= htmlspecialchars($search) ?>」</span>
-                    <a href="forum.php?cat=<?= $active_cat ?>" class="clear-search">✕ 清除</a>
+                    <a href="forum.php?cat=<?= htmlspecialchars($active_cat) ?>" class="clear-search">
+                        ✕ 清除
+                    </a>
                 <?php endif; ?>
+
                 <span class="forum-count"><?= count($posts) ?> 篇文章</span>
             </div>
 
@@ -289,59 +345,93 @@ require_once "header.php";
 
         <?php if (empty($_SESSION["user_id"])): ?>
             <div class="login-prompt">
-                <a href="login.php">登入</a> 後即可發表文章、留言與收藏貼文
+                <a href="login.php">登入學生帳號</a> 後即可發表文章、留言與收藏貼文
             </div>
         <?php endif; ?>
 
         <?php if (empty($posts)): ?>
+
             <div class="empty-state">
                 <i class="bi bi-chat-square-text"></i>
-                <?= $search !== '' ? "找不到「" . htmlspecialchars($search) . "」相關文章" : "目前還沒有文章，成為第一個發表的人吧！" ?>
+                <?= $search !== '' 
+                    ? "找不到「" . htmlspecialchars($search) . "」相關文章" 
+                    : "目前還沒有文章，成為第一個發表的人吧！" 
+                ?>
             </div>
 
         <?php else: ?>
 
-            <?php foreach ($posts as $post):
-                $author = $post["nickname"] ?: ($post["username"] ?? "匿名使用者");
-                $time_diff = time() - strtotime($post["created_at"]);
-                if ($time_diff < 60)          $time_str = "剛剛";
-                elseif ($time_diff < 3600)    $time_str = floor($time_diff / 60) . " 分鐘前";
-                elseif ($time_diff < 86400)   $time_str = floor($time_diff / 3600) . " 小時前";
-                else                          $time_str = date("Y/m/d", strtotime($post["created_at"]));
-                $isFavorited = !empty($post["is_favorited"]);
-            ?>
+            <?php foreach ($posts as $post): ?>
+
+                <?php
+                    $author = $post["nickname"] ?: ($post["username"] ?? "匿名使用者");
+
+                    $time_diff = time() - strtotime($post["created_at"]);
+                    if ($time_diff < 60) {
+                        $time_str = "剛剛";
+                    } elseif ($time_diff < 3600) {
+                        $time_str = floor($time_diff / 60) . " 分鐘前";
+                    } elseif ($time_diff < 86400) {
+                        $time_str = floor($time_diff / 3600) . " 小時前";
+                    } else {
+                        $time_str = date("Y/m/d", strtotime($post["created_at"]));
+                    }
+
+                    $isFavorited = !empty($post["is_favorited"]);
+                ?>
 
                 <article class="post-card" id="post-card-<?= htmlspecialchars($post["id"]) ?>">
 
                     <div class="post-card-top">
                         <a href="forum_post.php?id=<?= htmlspecialchars($post["id"]) ?>" class="post-card-link">
-                            <div class="post-card-title"><?= htmlspecialchars($post["title"]) ?></div>
+                            <div class="post-card-title">
+                                <?= htmlspecialchars($post["title"]) ?>
+                            </div>
                         </a>
 
-                        <?php if (!empty($_SESSION["user_id"])): ?>
-                            <button
-                                class="forum-bookmark-btn <?= $isFavorited ? 'saved' : '' ?>"
-                                data-type="post"
-                                data-id="<?= htmlspecialchars($post["id"]) ?>"
-                                onclick="toggleFavorite(this)"
-                                title="<?= $isFavorited ? '取消收藏' : '收藏貼文' ?>"
-                            >
-                                <?= $isFavorited ? '❤️ 已收藏' : '🤍 收藏' ?>
-                            </button>
+                        <?php if ($show_favorite_btn): ?>
+                            <?php if ($is_student): ?>
+                                <!-- 學生：可以正常收藏 -->
+                                <button
+                                    class="forum-bookmark-btn <?= $isFavorited ? 'saved' : '' ?>"
+                                    data-type="post"
+                                    data-id="<?= htmlspecialchars($post["id"]) ?>"
+                                    onclick="toggleFavorite(this)"
+                                    title="<?= $isFavorited ? '取消收藏' : '收藏貼文' ?>"
+                                >
+                                    <?= $isFavorited ? '❤️ 已收藏' : '🤍 收藏' ?>
+                                </button>
+                            <?php else: ?>
+                                <!-- 訪客：看得到收藏，但點了會去登入頁 -->
+                                <button
+                                    class="forum-bookmark-btn"
+                                    type="button"
+                                    onclick="location.href='login.php'"
+                                    title="登入後才能收藏"
+                                >
+                                    🤍 收藏
+                                </button>
+                            <?php endif; ?>
                         <?php endif; ?>
+
                     </div>
 
                     <a href="forum_post.php?id=<?= htmlspecialchars($post["id"]) ?>" class="post-card-link">
-                        <div class="post-card-preview"><?= htmlspecialchars($post["content"]) ?></div>
+                        <div class="post-card-preview">
+                            <?= htmlspecialchars($post["content"]) ?>
+                        </div>
+
                         <div class="post-card-meta">
                             <span class="meta-item meta-author">
                                 <i class="bi bi-person-circle"></i>
                                 <?= htmlspecialchars($author) ?>
                             </span>
+
                             <span class="meta-item">
                                 <i class="bi bi-clock"></i>
                                 <?= htmlspecialchars($time_str) ?>
                             </span>
+
                             <span class="meta-item">
                                 <i class="bi bi-chat-dots"></i>
                                 <?= htmlspecialchars($post["comment_count"]) ?> 則留言
@@ -374,12 +464,19 @@ function toggleFavorite(btn) {
 
     fetch("api/toggle_favorite.php", {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: "item_id=" + encodeURIComponent(itemId) + "&item_type=" + encodeURIComponent(itemType)
+        headers: { 
+            "Content-Type": "application/x-www-form-urlencoded" 
+        },
+        body: "item_id=" + encodeURIComponent(itemId) + 
+              "&item_type=" + encodeURIComponent(itemType)
     })
     .then(res => res.json())
     .then(data => {
-        if (!data.success) { alert(data.message); return; }
+        if (!data.success) { 
+            alert(data.message); 
+            return; 
+        }
+
         if (data.favorited) {
             btn.classList.add("saved");
             btn.title = "取消收藏";
@@ -392,16 +489,23 @@ function toggleFavorite(btn) {
             showToast("已取消收藏");
         }
     })
-    .catch(err => { console.error(err); alert("收藏操作失敗"); });
+    .catch(err => { 
+        console.error(err); 
+        alert("收藏操作失敗"); 
+    });
 }
 
 function showToast(msg) {
     const t = document.getElementById("favorite-toast");
     if (!t) return;
+
     t.textContent = msg;
     t.style.opacity = "1";
+
     clearTimeout(t._timer);
-    t._timer = setTimeout(() => { t.style.opacity = "0"; }, 1800);
+    t._timer = setTimeout(() => { 
+        t.style.opacity = "0"; 
+    }, 1800);
 }
 </script>
 
