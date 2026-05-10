@@ -14,11 +14,12 @@ $cat    = $_GET['cat']    ?? '';
 $search = trim($_GET['search'] ?? '');
 
 $clubs = [];
+$subscribed_ids = [];
+
 if ($pdo) {
     $params = [];
 
     if ($search !== '') {
-        // 拆成單字
         $chars = [];
         $len = mb_strlen($search, 'UTF-8');
         for ($i = 0; $i < $len; $i++) {
@@ -55,7 +56,6 @@ if ($pdo) {
         $sql .= " GROUP BY c.id ORDER BY c.category, c.id ASC";
 
     } else {
-        // 無搜尋，依分類篩選
         if ($cat && in_array($cat, $categories)) {
             $sql = "
                 SELECT c.*, GROUP_CONCAT(ct.tag_name ORDER BY ct.id SEPARATOR ',') AS tags
@@ -78,6 +78,13 @@ if ($pdo) {
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $clubs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // 取得已訂閱清單
+    if (!empty($_SESSION['user_id'])) {
+        $stmt2 = $pdo->prepare("SELECT club_id FROM subscriptions WHERE user_id = ?");
+        $stmt2->execute([$_SESSION['user_id']]);
+        $subscribed_ids = $stmt2->fetchAll(PDO::FETCH_COLUMN);
+    }
 }
 
 require_once "header.php";
@@ -144,6 +151,7 @@ body { font-family: "Microsoft JhengHei", sans-serif; background: #f8f9fa; }
     box-shadow:0 2px 12px rgba(0,0,0,.06); overflow:hidden;
     text-decoration:none; color:inherit; transition:transform .2s, box-shadow .2s;
     display:flex; flex-direction:column; animation:fadeUp .35s ease both;
+    position: relative;
 }
 .club-card:hover { transform:translateY(-4px); box-shadow:0 8px 28px rgba(0,0,0,.12); color:inherit; }
 @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
@@ -168,11 +176,38 @@ body { font-family: "Microsoft JhengHei", sans-serif; background: #f8f9fa; }
 .club-en   { font-size:.75rem; color:#999; margin-bottom:.5rem; }
 .club-tags { margin-top:.7rem; display:flex; flex-wrap:wrap; gap:.3rem; }
 .club-tag  { font-size:.68rem; padding:.15rem .5rem; border-radius:99px; background:#f5f5f5; color:#777; border:1px solid #e8e8e8; }
-.club-card-footer { padding:.6rem 1.1rem; border-top:1px solid #f0f0f0; font-size:.75rem; color:#aaa; display:flex; align-items:center; justify-content:space-between; }
+.club-card-footer {
+    padding:.6rem 1.1rem; border-top:1px solid #f0f0f0;
+    font-size:.75rem; color:#aaa;
+    display:flex; align-items:center; justify-content:space-between;
+}
 .view-more { font-size:.75rem; color:#c8502a; font-weight:500; }
+
+/* ── 訂閱按鈕 ── */
+.sub-btn {
+    display: inline-flex; align-items: center; gap: .3rem;
+    font-size: .72rem; font-weight: 600;
+    padding: .28rem .7rem; border-radius: 99px;
+    border: 1.5px solid #1a1a2e; background: transparent; color: #1a1a2e;
+    cursor: pointer; transition: all .18s;
+    white-space: nowrap;
+    position: relative; z-index: 2;
+}
+.sub-btn:hover        { background: #1a1a2e; color: #fff; }
+.sub-btn.subscribed   { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+.sub-btn.subscribed:hover { background: #c0392b; border-color: #c0392b; }
 
 .empty-state { text-align:center; padding:4rem 1rem; color:#aaa; grid-column:1/-1; }
 .empty-state i { font-size:3rem; margin-bottom:1rem; display:block; }
+
+/* ── Toast ── */
+#sub-toast {
+    position:fixed; bottom:1.5rem; right:1.5rem; z-index:9999;
+    background:#1a1a2e; color:#fff; padding:.55rem 1.1rem;
+    border-radius:8px; font-size:.8rem; font-weight:500;
+    box-shadow:0 4px 16px rgba(0,0,0,.2);
+    transition:opacity .3s; opacity:0; pointer-events:none;
+}
 
 @media(max-width:900px) { .clubs-grid { grid-template-columns:repeat(2,1fr); } }
 @media(max-width:600px) {
@@ -240,6 +275,7 @@ body { font-family: "Microsoft JhengHei", sans-serif; background: #f8f9fa; }
         $tags   = $club['tags'] ? explode(',', $club['tags']) : [];
         $hasImg = !empty($club['image']);
         $catCls = 'cat-' . $club['category'];
+        $isSub  = in_array($club['id'], $subscribed_ids);
     ?>
     <a href="club_detail.php?id=<?= $club['id'] ?>" class="club-card" style="animation-delay:<?= min($i,20)*0.04 ?>s">
         <?php if ($hasImg): ?>
@@ -263,13 +299,63 @@ body { font-family: "Microsoft JhengHei", sans-serif; background: #f8f9fa; }
         </div>
         <div class="club-card-footer">
             <span><?= htmlspecialchars($club['category']) ?></span>
-            <span class="view-more">查看詳情 →</span>
+            <div style="display:flex; align-items:center; gap:.6rem;">
+                <?php if (!empty($_SESSION['user_id'])): ?>
+                <button
+                    class="sub-btn <?= $isSub ? 'subscribed' : '' ?>"
+                    data-club-id="<?= $club['id'] ?>"
+                    onclick="toggleSub(event, this)">
+                    <i class="bi <?= $isSub ? 'bi-bell-fill' : 'bi-bell' ?>"></i>
+                    <?= $isSub ? '已訂閱' : '訂閱' ?>
+                </button>
+                <?php endif; ?>
+                <span class="view-more">查看詳情 →</span>
+            </div>
         </div>
     </a>
     <?php endforeach; ?>
     <?php endif; ?>
 </div>
 
+<div id="sub-toast"></div>
+
 <?php include 'footer.php'; ?>
+
+<script>
+function toggleSub(e, btn) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const clubId = btn.dataset.clubId;
+
+    fetch("api/toggle_subscription.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: "club_id=" + encodeURIComponent(clubId)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) { showToast(data.message); return; }
+        if (data.subscribed) {
+            btn.classList.add("subscribed");
+            btn.innerHTML = '<i class="bi bi-bell-fill"></i> 已訂閱';
+        } else {
+            btn.classList.remove("subscribed");
+            btn.innerHTML = '<i class="bi bi-bell"></i> 訂閱';
+        }
+        showToast(data.message);
+    })
+    .catch(() => showToast("操作失敗，請稍後再試"));
+}
+
+function showToast(msg) {
+    const t = document.getElementById("sub-toast");
+    t.textContent = msg;
+    t.style.opacity = "1";
+    clearTimeout(t._t);
+    t._t = setTimeout(() => { t.style.opacity = "0"; }, 2200);
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

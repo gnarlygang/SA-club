@@ -209,10 +209,9 @@ body {
     max-width: 1200px;
     margin: 0 auto;
     padding: 1.5rem 1.5rem 4rem;
-    display: grid;
-    grid-template-columns: 240px 1fr;
+    display: flex;
     gap: 1.5rem;
-    align-items: start;
+    align-items: flex-start;
 }
 
 .sidebar {
@@ -222,6 +221,14 @@ body {
     overflow: hidden;
     position: sticky;
     top: 80px;
+    flex: 0 0 240px;
+    width: 240px;
+    align-self: flex-start;
+}
+
+.content-wrap {
+    flex: 1;
+    min-width: 0;
 }
 
 .sidebar-section {
@@ -420,6 +427,7 @@ body {
 
 .act-list {
     display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
     gap: 1rem;
 }
 
@@ -429,7 +437,6 @@ body {
     border-radius: var(--radius);
     overflow: hidden;
     display: grid;
-    grid-template-columns: 1fr 150px;
     grid-template-rows: 1fr auto;
     transition: transform .2s, box-shadow .2s;
     animation: fadeUp .35s ease both;
@@ -464,15 +471,6 @@ body {
     gap: .45rem;
     margin-bottom: .5rem;
     flex-wrap: wrap;
-}
-
-.act-org-avatar {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 1px solid var(--border);
-    flex-shrink: 0;
 }
 
 .act-org-name {
@@ -548,24 +546,6 @@ body {
     width: 12px;
     height: 12px;
     flex-shrink: 0;
-}
-
-.act-img {
-    overflow: hidden;
-    grid-row: 1;
-    grid-column: 2;
-}
-
-.act-img img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-    transition: transform .4s;
-}
-
-.act-card:hover .act-img img {
-    transform: scale(1.05);
 }
 
 .act-footer {
@@ -659,6 +639,11 @@ body {
     text-align: center;
     padding: 4rem 1rem;
     color: var(--mute);
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
 .act-empty svg {
@@ -676,21 +661,17 @@ body {
 
 @media (max-width: 768px) {
     .page-wrap {
-        grid-template-columns: 1fr;
+        flex-direction: column;
     }
 
     .sidebar {
         position: static;
+        width: 100%;
+        flex: none;
     }
 
-    .act-card {
+    .act-list {
         grid-template-columns: 1fr;
-    }
-
-    .act-img {
-        height: 160px;
-        grid-column: 1;
-        grid-row: auto;
     }
 }
 </style>
@@ -992,12 +973,6 @@ body {
                         <div class="act-body">
 
                             <div class="act-org">
-                                <img 
-                                    class="act-org-avatar" 
-                                    src="<?= htmlspecialchars($img) ?>" 
-                                    alt=""
-                                >
-
                                 <span class="act-org-name">
                                     <?= htmlspecialchars($act['organizer'] ?? $act['club_name'] ?? '未指定社團') ?>
                                 </span>
@@ -1060,13 +1035,6 @@ body {
                                 </span>
 
                             </div>
-                        </div>
-
-                        <div class="act-img">
-                            <img 
-                                src="<?= htmlspecialchars($img) ?>" 
-                                alt="<?= htmlspecialchars($act['title'] ?? '活動圖片') ?>"
-                            >
                         </div>
 
                         <div class="act-footer">

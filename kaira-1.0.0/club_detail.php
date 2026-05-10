@@ -1,7 +1,6 @@
 <?php
 session_start();
 
-// ─── 資料庫連線 ──────────────────────────────────────────────────
 require_once "api/db.php";
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
@@ -10,48 +9,45 @@ try {
     $pdo = null;
 }
 
-// ─── 取得社團 ID ─────────────────────────────────────────────────
 $id = (int)($_GET['id'] ?? 0);
 if (!$id) { header("Location: clubs.php"); exit; }
 
-$club = null;
-$tags = [];
+$club       = null;
+$tags       = [];
 $activities = [];
+$is_subscribed = false;
 
 if ($pdo) {
-    // 社團基本資料
     $stmt = $pdo->prepare("SELECT c.*, u.email FROM clubs c LEFT JOIN users u ON u.user_id = c.user_id WHERE c.id = :id");
     $stmt->execute([':id' => $id]);
     $club = $stmt->fetch(PDO::FETCH_ASSOC);
-
     if (!$club) { header("Location: clubs.php"); exit; }
 
-    // 標籤
     $stmt2 = $pdo->prepare("SELECT tag_name FROM club_tags WHERE club_id = :id ORDER BY id");
     $stmt2->execute([':id' => $id]);
     $tags = $stmt2->fetchAll(PDO::FETCH_COLUMN);
 
-    // 該社團的活動（用 user_id 對應）
     if ($club['user_id']) {
         $stmt3 = $pdo->prepare("SELECT * FROM activities WHERE user_id = :uid ORDER BY created_at DESC LIMIT 5");
         $stmt3->execute([':uid' => $club['user_id']]);
         $activities = $stmt3->fetchAll(PDO::FETCH_ASSOC);
     }
-} else {
-    // 假資料
-    $club = ['id'=>88,'name'=>'國樂社','category'=>'音樂性社團','image'=>'https://images.unsplash.com/photo-1507838153414-b4b713384a76?auto=format&fit=crop&w=1200&q=80','description'=>'FJU Chinese Music Club','user_id'=>1406061,'email'=>'1406061@cloud.fju.edu.tw'];
-    $tags = ['音樂交流','傳統文化'];
-    $activities = [];
+
+    // 是否已訂閱
+    if (!empty($_SESSION['user_id'])) {
+        $stmtS = $pdo->prepare("SELECT id FROM subscriptions WHERE user_id = ? AND club_id = ?");
+        $stmtS->execute([$_SESSION['user_id'], $id]);
+        $is_subscribed = (bool)$stmtS->fetch();
+    }
 }
 
-// 分類對應色系
 $catColors = [
-    '學術性社團'   => ['bg'=>'#e8f0fe','color'=>'#1a56db'],
-    '休閒聯誼性社團'=> ['bg'=>'#fef3c7','color'=>'#92400e'],
-    '服務性社團'   => ['bg'=>'#d1fae5','color'=>'#065f46'],
-    '體能性社團'   => ['bg'=>'#fee2e2','color'=>'#991b1b'],
-    '藝術性社團'   => ['bg'=>'#ede9fe','color'=>'#5b21b6'],
-    '音樂性社團'   => ['bg'=>'#fce7f3','color'=>'#9d174d'],
+    '學術性社團'    => ['bg'=>'#e8f0fe','color'=>'#1a56db'],
+    '休閒聯誼性社團' => ['bg'=>'#fef3c7','color'=>'#92400e'],
+    '服務性社團'    => ['bg'=>'#d1fae5','color'=>'#065f46'],
+    '體能性社團'    => ['bg'=>'#fee2e2','color'=>'#991b1b'],
+    '藝術性社團'    => ['bg'=>'#ede9fe','color'=>'#5b21b6'],
+    '音樂性社團'    => ['bg'=>'#fce7f3','color'=>'#9d174d'],
 ];
 $cc = $catColors[$club['category']] ?? ['bg'=>'#f0f0f0','color'=>'#666'];
 
@@ -66,121 +62,126 @@ require_once "header.php";
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
 <style>
-  body { font-family: "Microsoft JhengHei", sans-serif; background: #f5f5f5; }
+body { font-family: "Microsoft JhengHei", sans-serif; background: #f5f5f5; }
 
-  /* ── Hero Image ── */
-  .club-hero {
-    width: 100%;
-    height: 340px;
-    object-fit: cover;
-    display: block;
-    background: #dde1e7;
-  }
-  .club-hero-placeholder {
+.club-hero {
+    width: 100%; height: 340px; object-fit: cover; display: block; background: #dde1e7;
+}
+.club-hero-placeholder {
     width: 100%; height: 340px;
     background: linear-gradient(135deg, #dde1e7, #c9cfd8);
     display: flex; align-items: center; justify-content: center;
     color: #9aa0aa; font-size: 5rem;
-  }
+}
 
-  /* ── Detail Card ── */
-  .detail-card {
-    background: #fff;
-    border-radius: 0 0 16px 16px;
+.detail-card {
+    background: #fff; border-radius: 0 0 16px 16px;
     padding: 2rem 2.5rem 2.5rem;
-    max-width: 860px;
-    margin: 0 auto 2rem;
+    max-width: 860px; margin: 0 auto 2rem;
     box-shadow: 0 4px 24px rgba(0,0,0,.08);
-  }
+}
 
-  .cat-badge {
+.club-header-row {
+    display: flex; align-items: flex-start;
+    justify-content: space-between; flex-wrap: wrap;
+    gap: 1rem; margin-bottom: 1rem;
+}
+
+.cat-badge {
     display: inline-block; padding: .28rem .75rem;
     border-radius: 99px; font-size: .78rem; font-weight: 600;
-    margin-bottom: 1rem;
-  }
+    margin-bottom: .6rem;
+}
+.club-name-big {
+    font-size: clamp(1.5rem,3vw,2rem);
+    font-weight: 800; color: #1a1a2e; margin-bottom: .3rem;
+}
 
-  .club-name-big {
-    font-size: clamp(1.5rem, 3vw, 2rem);
-    font-weight: 800; color: #1a1a2e;
-    margin-bottom: .3rem;
-  }
+/* ── 訂閱按鈕 ── */
+.sub-btn {
+    display: inline-flex; align-items: center; gap: .45rem;
+    font-size: .88rem; font-weight: 600;
+    padding: .55rem 1.2rem; border-radius: 8px;
+    border: 2px solid #1a1a2e; background: transparent; color: #1a1a2e;
+    cursor: pointer; transition: all .18s; white-space: nowrap;
+    flex-shrink: 0;
+}
+.sub-btn:hover       { background: #1a1a2e; color: #fff; }
+.sub-btn.subscribed  { background: #1a1a2e; color: #fff; }
+.sub-btn.subscribed:hover { background: #c0392b; border-color: #c0392b; }
 
-  /* ── Info Rows ── */
-  .info-row {
+.info-row {
     display: flex; align-items: flex-start; gap: 1rem;
-    padding: 1.1rem 0;
-    border-bottom: 1px solid #f0f0f0;
-  }
-  .info-row:last-child { border-bottom: none; }
+    padding: 1.1rem 0; border-bottom: 1px solid #f0f0f0;
+}
+.info-row:last-child { border-bottom: none; }
 
-  .info-icon {
+.info-icon {
     width: 42px; height: 42px; border-radius: 10px;
     background: #f0f4ff;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-  }
-  .info-icon i { font-size: 1.2rem; color: #4a6cf7; }
-  .info-icon.green  { background: #e8f5ee; } .info-icon.green  i { color: #2d8a5e; }
-  .info-icon.orange { background: #fff3e0; } .info-icon.orange i { color: #e07a10; }
-  .info-icon.purple { background: #f3effe; } .info-icon.purple i { color: #7c3aed; }
-  .info-icon.pink   { background: #fce7f3; } .info-icon.pink   i { color: #9d174d; }
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.info-icon i { font-size: 1.2rem; color: #4a6cf7; }
+.info-icon.green  { background: #e8f5ee; } .info-icon.green  i { color: #2d8a5e; }
+.info-icon.orange { background: #fff3e0; } .info-icon.orange i { color: #e07a10; }
+.info-icon.purple { background: #f3effe; } .info-icon.purple i { color: #7c3aed; }
 
-  .info-label { font-size: .75rem; color: #999; margin-bottom: .2rem; }
-  .info-value { font-size: .95rem; color: #1a1a2e; font-weight: 500; line-height: 1.5; }
+.info-label { font-size: .75rem; color: #999; margin-bottom: .2rem; }
+.info-value { font-size: .95rem; color: #1a1a2e; font-weight: 500; line-height: 1.5; }
 
-  /* ── Tags ── */
-  .tag-wrap { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: 1rem; }
-  .tag-item {
+.tag-wrap { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: 1rem; }
+.tag-item {
     padding: .25rem .7rem; border-radius: 99px;
     font-size: .75rem; background: #f5f5f5;
     border: 1px solid #e5e5e5; color: #555;
-  }
+}
 
-  /* ── Activities Section ── */
-  .section-title {
+.section-title {
     font-size: 1rem; font-weight: 700; color: #1a1a2e;
     margin-bottom: 1rem; padding-bottom: .5rem;
-    border-bottom: 2px solid #1a1a2e;
-    display: inline-block;
-  }
-  .act-item {
+    border-bottom: 2px solid #1a1a2e; display: inline-block;
+}
+.act-item {
     padding: .9rem 1rem; border-radius: 8px;
     border: 1px solid #efefef; background: #fafafa;
     margin-bottom: .6rem; transition: background .18s;
     text-decoration: none; color: inherit; display: block;
-  }
-  .act-item:hover { background: #f0f4ff; color: inherit; }
-  .act-title { font-weight: 600; font-size: .9rem; color: #1a1a2e; margin-bottom: .25rem; }
-  .act-meta  { font-size: .75rem; color: #999; display: flex; flex-wrap: wrap; gap: .5rem .8rem; }
-  .act-meta span { display: flex; align-items: center; gap: .25rem; }
-  .act-badge {
-    font-size: .68rem; padding: .15rem .5rem; border-radius: 99px;
-    background: #e8f5ed; color: #2d8a5e; font-weight: 500; flex-shrink: 0;
-  }
-  .act-badge.paid { background: #fff3e0; color: #b85c00; }
+}
+.act-item:hover { background: #f0f4ff; color: inherit; }
+.act-title { font-weight: 600; font-size: .9rem; color: #1a1a2e; margin-bottom: .25rem; }
+.act-meta  { font-size: .75rem; color: #999; display: flex; flex-wrap: wrap; gap: .5rem .8rem; }
+.act-meta span { display: flex; align-items: center; gap: .25rem; }
+.act-badge { font-size: .68rem; padding: .15rem .5rem; border-radius: 99px; background: #e8f5ed; color: #2d8a5e; font-weight: 500; }
+.act-badge.paid { background: #fff3e0; color: #b85c00; }
 
-  /* ── Back Button ── */
-  .back-btn {
+.back-btn {
     display: inline-flex; align-items: center; gap: .4rem;
     color: #666; text-decoration: none; font-size: .85rem;
     padding: .4rem .9rem; border-radius: 6px;
     border: 1px solid #ddd; background: #fff;
-    transition: all .18s; margin-bottom: 1rem;
-    max-width: 860px;
-  }
-  .back-btn:hover { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
-  .back-wrap { max-width: 860px; margin: 1.5rem auto .5rem; padding: 0 1.5rem; }
+    transition: all .18s;
+}
+.back-btn:hover { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+.back-wrap { max-width: 860px; margin: 1.5rem auto .5rem; padding: 0 1.5rem; }
 
-  @media (max-width: 640px) {
+/* toast */
+#sub-toast {
+    position:fixed; bottom:1.5rem; right:1.5rem; z-index:9999;
+    background:#1a1a2e; color:#fff; padding:.55rem 1.1rem;
+    border-radius:8px; font-size:.8rem; font-weight:500;
+    box-shadow:0 4px 16px rgba(0,0,0,.2);
+    transition:opacity .3s; opacity:0; pointer-events:none;
+}
+
+@media (max-width: 640px) {
     .detail-card { padding: 1.2rem 1.2rem 1.5rem; border-radius: 12px; }
     .club-hero, .club-hero-placeholder { height: 220px; }
     .back-wrap { padding: 0 1rem; }
-  }
+    .club-header-row { flex-direction: column; }
+}
 </style>
 </head>
 <body>
-
-<?php require_once "header.php"; ?>
 
 <!-- Back button -->
 <div class="back-wrap container">
@@ -189,28 +190,37 @@ require_once "header.php";
     </a>
 </div>
 
-<!-- Hero Image + Detail Card -->
 <div style="max-width:860px; margin:0 auto; padding: 0 1.5rem 2rem;">
 
     <!-- 圖片 -->
     <?php if (!empty($club['image'])): ?>
         <img class="club-hero" src="<?= htmlspecialchars($club['image']) ?>" alt="<?= htmlspecialchars($club['name']) ?>">
     <?php else: ?>
-        <div class="club-hero-placeholder">
-            <i class="bi bi-people-fill"></i>
-        </div>
+        <div class="club-hero-placeholder"><i class="bi bi-people-fill"></i></div>
     <?php endif; ?>
 
     <!-- 主資訊卡 -->
     <div class="detail-card">
 
-        <!-- 分類 Badge -->
-        <span class="cat-badge" style="background:<?= $cc['bg'] ?>;color:<?= $cc['color'] ?>">
-            <?= htmlspecialchars($club['category']) ?>
-        </span>
+        <div class="club-header-row">
+            <div>
+                <span class="cat-badge" style="background:<?= $cc['bg'] ?>;color:<?= $cc['color'] ?>">
+                    <?= htmlspecialchars($club['category']) ?>
+                </span>
+                <h1 class="club-name-big"><?= htmlspecialchars($club['name']) ?></h1>
+            </div>
 
-        <!-- 社團名稱 -->
-        <h1 class="club-name-big"><?= htmlspecialchars($club['name']) ?></h1>
+            <?php if (!empty($_SESSION['user_id'])): ?>
+            <button
+                id="subBtn"
+                class="sub-btn <?= $is_subscribed ? 'subscribed' : '' ?>"
+                data-club-id="<?= $id ?>"
+                onclick="toggleSub(this)">
+                <i class="bi <?= $is_subscribed ? 'bi-bell-fill' : 'bi-bell' ?>"></i>
+                <?= $is_subscribed ? '已訂閱' : '訂閱此社團' ?>
+            </button>
+            <?php endif; ?>
+        </div>
 
         <!-- 標籤 -->
         <?php if (!empty($tags)): ?>
@@ -256,7 +266,7 @@ require_once "header.php";
         </div>
         <?php endif; ?>
 
-    </div><!-- /.detail-card -->
+    </div>
 
     <!-- 近期活動 -->
     <?php if (!empty($activities)): ?>
@@ -266,7 +276,7 @@ require_once "header.php";
             $isFree = str_contains($act['fee'], '免費') || $act['fee'] === '0';
             $isPast = strtotime($act['signup_deadline']) < time();
         ?>
-        <a href="activity_detail.php?id=<?= $act['id'] ?>" class="act-item">
+        <a href="activity_view.php?id=<?= $act['id'] ?>" class="act-item">
             <div style="display:flex; align-items:center; gap:.5rem; margin-bottom:.3rem;">
                 <span class="act-title"><?= htmlspecialchars($act['title']) ?></span>
                 <span class="act-badge <?= $isFree ? '' : 'paid' ?>">
@@ -286,10 +296,44 @@ require_once "header.php";
     </div>
     <?php endif; ?>
 
-</div><!-- /.container -->
+</div>
+
+<div id="sub-toast"></div>
 
 <?php include 'footer.php'; ?>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function toggleSub(btn) {
+    const clubId = btn.dataset.clubId;
+
+    fetch("api/toggle_subscription.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: "club_id=" + encodeURIComponent(clubId)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) { showToast(data.message); return; }
+        if (data.subscribed) {
+            btn.classList.add("subscribed");
+            btn.innerHTML = '<i class="bi bi-bell-fill"></i> 已訂閱';
+        } else {
+            btn.classList.remove("subscribed");
+            btn.innerHTML = '<i class="bi bi-bell"></i> 訂閱此社團';
+        }
+        showToast(data.message);
+    })
+    .catch(() => showToast("操作失敗，請稍後再試"));
+}
+
+function showToast(msg) {
+    const t = document.getElementById("sub-toast");
+    t.textContent = msg;
+    t.style.opacity = "1";
+    clearTimeout(t._t);
+    t._t = setTimeout(() => { t.style.opacity = "0"; }, 2200);
+}
+</script>
 </body>
 </html>
