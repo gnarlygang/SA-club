@@ -3,12 +3,6 @@ session_start();
 
 // ─── 資料庫連線 ──────────────────────────────────────────────────
 require_once "api/db.php";
-try {
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch (PDOException $e) {
-    $pdo = null;
-}
 
 // ─── 取得搜尋關鍵字 ──────────────────────────────────────────────
 $search  = trim($_GET['search'] ?? '');
