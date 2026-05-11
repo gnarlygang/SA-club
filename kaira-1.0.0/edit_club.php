@@ -86,7 +86,7 @@ require_once "header.php";
     :root {
       --nav-bg: #f8f9fa;
       --accent: #3a3a3a;
-      --footer-bg: #afbac7;
+      --footer-bg: #1a2744;
       --card-shadow: 0 8px 32px rgba(60,80,120,0.10);
       --input-border: #c8d0dc;
       --btn-bg: #2d2d2d;

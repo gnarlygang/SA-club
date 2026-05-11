@@ -206,9 +206,10 @@ body {
 }
 
 .page-wrap {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 1.5rem 1.5rem 4rem;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 1.5rem 2rem 4rem;
     display: grid;
     grid-template-columns: 240px 1fr;
     gap: 1.5rem;

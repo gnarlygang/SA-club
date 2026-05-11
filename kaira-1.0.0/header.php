@@ -26,6 +26,7 @@ $username = $_SESSION['username'] ?? '';
     <link rel="stylesheet" href="css/club_sub.css">
     <link rel="stylesheet" href="css/forum.css">
     <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="css/navbar.css">
 
     <style>
     .nav-username,
