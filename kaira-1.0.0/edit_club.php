@@ -1,5 +1,7 @@
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 require_once "api/db.php";
 $error = "";
@@ -93,6 +95,9 @@ require_once "header.php";
       --btn-hover: #444;
       --error-color: #c0392b;
       --label-color: #555;
+      --sidebar-bg: #1e2d40;
+      --sidebar-width: 220px;
+      --sidebar-accent: #4e8cdb;
     }
 
     * { box-sizing: border-box; }
@@ -105,14 +110,174 @@ require_once "header.php";
       flex-direction: column;
     }
 
-    .edit-wrapper {
+    /* ─── Layout shell ─── */
+    .page-shell {
+      flex: 1;
+      display: flex;
+      align-items: stretch;
+    }
+
+    /* ─── Sidebar ─── */
+    .sidebar {
+      width: var(--sidebar-width);
+      background: var(--sidebar-bg);
+      display: flex;
+      flex-direction: column;
+      padding: 40px 0 32px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      flex-shrink: 0;
+      box-shadow: 4px 0 24px rgba(0,0,0,0.13);
+      z-index: 10;
+    }
+
+    .sidebar-brand {
+      padding: 0 24px 32px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      margin-bottom: 24px;
+    }
+
+    .sidebar-brand-label {
+      font-size: 10px;
+      letter-spacing: 2.5px;
+      color: rgba(255,255,255,0.38);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .sidebar-brand-title {
+      font-family: "Noto Serif TC", serif;
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.4;
+    }
+
+    .sidebar-section-label {
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: rgba(255,255,255,0.30);
+      text-transform: uppercase;
+      padding: 0 24px 10px;
+    }
+
+    .sidebar-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 0 12px;
+    }
+
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      text-decoration: none;
+      color: rgba(255,255,255,0.65);
+      font-size: 14px;
+      font-weight: 500;
+      transition: background 0.18s, color 0.18s, transform 0.15s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .sidebar-link::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      background: var(--sidebar-accent);
+      border-radius: 0 3px 3px 0;
+      opacity: 0;
+      transform: scaleY(0.4);
+      transition: opacity 0.18s, transform 0.18s;
+    }
+
+    .sidebar-link:hover {
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      transform: translateX(3px);
+    }
+
+    .sidebar-link:hover::before {
+      opacity: 1;
+      transform: scaleY(1);
+    }
+
+    .sidebar-link.active {
+      background: rgba(78,140,219,0.18);
+      color: #7bb8f5;
+    }
+
+    .sidebar-link.active::before {
+      opacity: 1;
+      transform: scaleY(1);
+    }
+
+    .sidebar-link-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.07);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      flex-shrink: 0;
+      transition: background 0.18s;
+    }
+
+    .sidebar-link:hover .sidebar-link-icon {
+      background: rgba(78,140,219,0.25);
+    }
+
+    .sidebar-link.active .sidebar-link-icon {
+      background: rgba(78,140,219,0.30);
+      color: #7bb8f5;
+    }
+
+    .sidebar-link-text { line-height: 1.2; }
+    .sidebar-link-sub {
+      display: block;
+      font-size: 10px;
+      color: rgba(255,255,255,0.28);
+      font-weight: 400;
+      margin-top: 1px;
+    }
+
+    .sidebar-link:hover .sidebar-link-sub { color: rgba(255,255,255,0.45); }
+
+    .sidebar-divider {
+      border: none;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      margin: 16px 24px;
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 0 24px;
+    }
+
+    .sidebar-footer-text {
+      font-size: 10px;
+      color: rgba(255,255,255,0.22);
+      line-height: 1.6;
+    }
+
+    /* ─── Main content ─── */
+    .main-content {
       flex: 1;
       display: flex;
       align-items: flex-start;
       justify-content: center;
-      padding: 48px 16px 60px;
+      padding: 48px 24px 60px;
+      overflow-y: auto;
     }
 
+    /* ─── Edit card ─── */
     .edit-card {
       width: 100%;
       max-width: 780px;
@@ -313,16 +478,111 @@ require_once "header.php";
 
     footer {
       background-color: var(--footer-bg);
-      color: #333;
+      color: #aab;
       padding: 16px 0;
       text-align: center;
       font-size: 13px;
+    }
+
+    /* ─── Mobile sidebar toggle ─── */
+    .sidebar-toggle {
+      display: none;
+      position: fixed;
+      bottom: 24px;
+      left: 24px;
+      z-index: 200;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--sidebar-bg);
+      color: #fff;
+      border: none;
+      font-size: 20px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        position: fixed;
+        left: 0; top: 0;
+        height: 100%;
+        transform: translateX(-100%);
+        transition: transform 0.28s cubic-bezier(.4,0,.2,1);
+        z-index: 100;
+      }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-toggle { display: flex; }
+      .main-content { padding: 32px 16px 60px; }
     }
   </style>
 </head>
 <body>
 
-  <div class="edit-wrapper">
+<div class="page-shell">
+
+  <!-- ═══════════ SIDEBAR ═══════════ -->
+  <aside class="sidebar" id="sidebar">
+
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-label">管理中心</div>
+      <div class="sidebar-brand-title">輔大<br>社團平台</div>
+    </div>
+
+    <div class="sidebar-section-label">社團管理</div>
+
+    <nav class="sidebar-nav">
+
+      <a href="form_manage.php" class="sidebar-link">
+        <div class="sidebar-link-icon">
+          <i class="bi bi-ui-checks-grid"></i>
+        </div>
+        <div class="sidebar-link-text">
+          表單管理
+          <span class="sidebar-link-sub">報名表 / 問卷設定</span>
+        </div>
+      </a>
+
+      <a href="form_review.php" class="sidebar-link">
+        <div class="sidebar-link-icon">
+          <i class="bi bi-person-check"></i>
+        </div>
+        <div class="sidebar-link-text">
+          名單審核
+          <span class="sidebar-link-sub">審核成員申請</span>
+        </div>
+      </a>
+
+    </nav>
+
+    <hr class="sidebar-divider">
+
+    <div class="sidebar-section-label">快捷</div>
+
+    <nav class="sidebar-nav">
+      <a href="create_club.php" class="sidebar-link">
+        <div class="sidebar-link-icon">
+          <i class="bi bi-arrow-left-short"></i>
+        </div>
+        <div class="sidebar-link-text">
+          返回社團頁
+        </div>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-footer-text">
+        天主教輔仁大學<br>
+        社團活動管理平台
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ═══════════ MAIN CONTENT ═══════════ -->
+  <main class="main-content">
     <div class="edit-card">
 
       <div class="edit-card-header">
@@ -443,12 +703,20 @@ require_once "header.php";
         </div>
       </div>
     </div>
-  </div>
+  </main>
+
+</div><!-- .page-shell -->
+
+<!-- Mobile toggle button -->
+<button class="sidebar-toggle" id="sidebarToggle" aria-label="開關側邊欄">
+  <i class="bi bi-list"></i>
+</button>
 
 <?php require "footer.php"; ?>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+    // Image preview
     const imageInput = document.getElementById("imageInput");
     const previewWrap = document.getElementById("previewWrap");
 
@@ -477,6 +745,32 @@ require_once "header.php";
     imageInput.addEventListener("input", function () {
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => updatePreview(this.value.trim()), 800);
+    });
+
+    // Mobile sidebar toggle
+    const sidebar = document.getElementById("sidebar");
+    const toggleBtn = document.getElementById("sidebarToggle");
+
+    toggleBtn.addEventListener("click", () => {
+      sidebar.classList.toggle("open");
+    });
+
+    // Close sidebar when clicking outside on mobile
+    document.addEventListener("click", (e) => {
+      if (window.innerWidth <= 768 &&
+          !sidebar.contains(e.target) &&
+          !toggleBtn.contains(e.target)) {
+        sidebar.classList.remove("open");
+      }
+    });
+
+    // Highlight active link based on current page
+    const currentPage = window.location.pathname.split("/").pop();
+    document.querySelectorAll(".sidebar-link").forEach(link => {
+      const href = link.getAttribute("href");
+      if (href && href === currentPage) {
+        link.classList.add("active");
+      }
     });
   </script>
 </body>

@@ -347,8 +347,8 @@ $is_deadline_passed = strtotime($activity["signup_deadline"]) < strtotime(date("
           </a>
           <div class="deadline-notice">此活動報名已於 <?= fmt_date($activity["signup_deadline"]) ?> 截止</div>
         <?php else: ?>
-          <a href="#" class="btn-signup">
-            <i class="bi bi-pencil-square me-2"></i>我要報名
+          <a href="form_apply.php?form_id=<?= h($formId) ?>" class="btn-signup">
+          <i class="bi bi-pencil-square me-2"></i>我要報名
           </a>
         <?php endif; ?>
       </div>
