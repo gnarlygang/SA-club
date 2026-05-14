@@ -326,6 +326,11 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
                         <?= htmlspecialchars($club['category']) ?>
                     </span>
                     <h1 class="club-name-big"><?= htmlspecialchars($club['name']) ?></h1>
+                    <?php if (!empty($club['short_name'])): ?>
+                    <div style="font-size:.85rem;color:var(--mute);margin-top:.3rem;">
+                        <?= htmlspecialchars($club['short_name']) ?>
+                    </div>
+                    <?php endif; ?>
                 </div>
 
                 <?php if (!empty($_SESSION['user_id'])): ?>

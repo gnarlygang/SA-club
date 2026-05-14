@@ -441,6 +441,11 @@ require_once "header.php";
                   <?= htmlspecialchars($club['category']) ?>
                 </span>
                 <div class="club-name-big"><?= htmlspecialchars($club['name']) ?></div>
+                <?php if (!empty($club['short_name'])): ?>
+                <div style="font-size:.85rem;color:var(--mute);margin-top:.3rem;">
+                  <?= htmlspecialchars($club['short_name']) ?>
+                </div>
+                <?php endif; ?>
               </div>
               <div class="sub-area">
                 <div class="sub-count-small"><strong><?= number_format($sub_count) ?></strong> 人訂閱</div>

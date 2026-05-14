@@ -286,7 +286,9 @@ body { font-family: "Microsoft JhengHei", sans-serif; background: #f8f9fa; }
         <div class="club-card-body">
             <span class="club-cat-badge <?= $catCls ?>"><?= htmlspecialchars($club['category']) ?></span>
             <div class="club-name"><?= htmlspecialchars($club['name']) ?></div>
-            <?php if (!empty($club['description'])): ?>
+            <?php if (!empty($club['short_name'])): ?>
+                <div class="club-en"><?= htmlspecialchars($club['short_name']) ?></div>
+            <?php elseif (!empty($club['description'])): ?>
                 <div class="club-en"><?= htmlspecialchars(mb_substr($club['description'], 0, 40)) ?></div>
             <?php endif; ?>
             <?php if (!empty($tags)): ?>

@@ -18,21 +18,23 @@ try {
 
     // 處理 POST 送出
     if ($_SERVER["REQUEST_METHOD"] === "POST") {
-        $description = trim($_POST["description"] ?? "");
-        $image       = trim($_POST["image"]       ?? "");
-        $email       = trim($_POST["email"]        ?? "");
+        $description  = trim($_POST["description"]  ?? "");
+        $image        = trim($_POST["image"]         ?? "");
+        $email        = trim($_POST["email"]          ?? "");
+        $short_name   = trim($_POST["short_name"]     ?? "");
 
         if ($description === "") {
             $error = "社團介紹不可為空。";
         } elseif ($email !== "" && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $error = "信箱格式不正確。";
         } else {
-            // 更新 clubs 表（介紹、圖片）
-            $stmt = $pdo->prepare("UPDATE clubs SET description = :description, image = :image
+            // 更新 clubs 表（介紹、圖片、簡稱）
+            $stmt = $pdo->prepare("UPDATE clubs SET description = :description, image = :image, short_name = :short_name
                                    WHERE id = :id AND user_id = :uid");
             $stmt->execute([
                 ":description" => $description,
                 ":image"       => $image,
+                ":short_name"  => $short_name,
                 ":id"          => $club_id,
                 ":uid"         => $_SESSION["user_id"] ?? null,
             ]);
@@ -70,6 +72,7 @@ try {
 $form_description = isset($_POST["description"]) ? $_POST["description"] : ($club["description"] ?? "");
 $form_image       = isset($_POST["image"])       ? $_POST["image"]       : ($club["image"]       ?? "");
 $form_email       = isset($_POST["email"])       ? $_POST["email"]       : ($club["email"]       ?? "");
+$form_short_name  = isset($_POST["short_name"])  ? $_POST["short_name"]  : ($club["short_name"]  ?? "");
 
 require_once "header.php";
 ?>
@@ -628,6 +631,23 @@ require_once "header.php";
                 >
               </div>
               <div class="hint-text">信箱將顯示於社團資料頁面，可留空。</div>
+            </div>
+
+            <!-- 社團簡稱 -->
+            <div class="mb-4">
+              <label class="form-label">社團簡稱</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-badge-tm"></i></span>
+                <input
+                  type="text"
+                  class="form-control"
+                  name="short_name"
+                  placeholder="例如：國樂社、天文社（可留空）"
+                  maxlength="20"
+                  value="<?= htmlspecialchars($form_short_name) ?>"
+                >
+              </div>
+              <div class="hint-text">社團的常用簡稱，最多 20 字，可留空。</div>
             </div>
 
             <hr class="divider">
