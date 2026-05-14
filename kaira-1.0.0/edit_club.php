@@ -523,64 +523,6 @@ require_once "header.php";
 
 <div class="page-shell">
 
-  <!-- ═══════════ SIDEBAR ═══════════ -->
-  <aside class="sidebar" id="sidebar">
-
-    <div class="sidebar-brand">
-      <div class="sidebar-brand-label">管理中心</div>
-      <div class="sidebar-brand-title">輔大<br>社團平台</div>
-    </div>
-
-    <div class="sidebar-section-label">社團管理</div>
-
-    <nav class="sidebar-nav">
-
-      <a href="form_manage.php" class="sidebar-link">
-        <div class="sidebar-link-icon">
-          <i class="bi bi-ui-checks-grid"></i>
-        </div>
-        <div class="sidebar-link-text">
-          表單管理
-          <span class="sidebar-link-sub">報名表 / 問卷設定</span>
-        </div>
-      </a>
-
-      <a href="form_review.php" class="sidebar-link">
-        <div class="sidebar-link-icon">
-          <i class="bi bi-person-check"></i>
-        </div>
-        <div class="sidebar-link-text">
-          名單審核
-          <span class="sidebar-link-sub">審核成員申請</span>
-        </div>
-      </a>
-
-    </nav>
-
-    <hr class="sidebar-divider">
-
-    <div class="sidebar-section-label">快捷</div>
-
-    <nav class="sidebar-nav">
-      <a href="create_club.php" class="sidebar-link">
-        <div class="sidebar-link-icon">
-          <i class="bi bi-arrow-left-short"></i>
-        </div>
-        <div class="sidebar-link-text">
-          返回社團頁
-        </div>
-      </a>
-    </nav>
-
-    <div class="sidebar-footer">
-      <div class="sidebar-footer-text">
-        天主教輔仁大學<br>
-        社團活動管理平台
-      </div>
-    </div>
-
-  </aside>
-
   <!-- ═══════════ MAIN CONTENT ═══════════ -->
   <main class="main-content">
     <div class="edit-card">
