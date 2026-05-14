@@ -1,11 +1,7 @@
 <?php
 session_start();
 require_once "api/db.php";
-
-try {
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch (PDOException $e) { $pdo = null; }
+// db.php 應提供 $pdo，若沒有則 $pdo = null
 
 $id = (int)($_GET['id'] ?? 0);
 if (!$id) { header("Location: clubs.php"); exit; }
@@ -13,19 +9,34 @@ if (!$id) { header("Location: clubs.php"); exit; }
 $club = $tags = $activities = [];
 $is_subscribed = false;
 $sub_count = 0;
+$total_act_count = 0; // 真實活動總數（不受 LIMIT 影響）
 
 if ($pdo) {
+    // 社團資料
     $stmt = $pdo->prepare("SELECT c.*, u.email FROM clubs c LEFT JOIN users u ON u.user_id=c.user_id WHERE c.id=:id");
     $stmt->execute([':id' => $id]);
     $club = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$club) { header("Location: clubs.php"); exit; }
 
+    // 標籤
     $stmt2 = $pdo->prepare("SELECT tag_name FROM club_tags WHERE club_id=:id ORDER BY id");
     $stmt2->execute([':id' => $id]);
     $tags = $stmt2->fetchAll(PDO::FETCH_COLUMN);
 
     if ($club['user_id']) {
-        $stmt3 = $pdo->prepare("SELECT * FROM activities WHERE user_id=:uid ORDER BY created_at DESC LIMIT 6");
+        // 真實活動總數
+        $stmtTotal = $pdo->prepare("SELECT COUNT(*) FROM activities WHERE user_id=:uid");
+        $stmtTotal->execute([':uid' => $club['user_id']]);
+        $total_act_count = (int)$stmtTotal->fetchColumn();
+
+        // 撈近期活動（不再硬限 6 筆，改為 20 筆並過濾舊資料）
+        $stmt3 = $pdo->prepare("
+            SELECT * FROM activities
+            WHERE user_id=:uid
+              AND (event_end IS NULL OR event_end >= DATE_SUB(NOW(), INTERVAL 30 DAY))
+            ORDER BY created_at DESC
+            LIMIT 20
+        ");
         $stmt3->execute([':uid' => $club['user_id']]);
         $activities = $stmt3->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -44,22 +55,31 @@ if ($pdo) {
 }
 
 $catColors = [
-    '學術性社團'    => ['bg'=>'#e8f0fe','color'=>'#1a56db'],
-    '休閒聯誼性社團' => ['bg'=>'#fef3c7','color'=>'#92400e'],
-    '服務性社團'    => ['bg'=>'#d1fae5','color'=>'#065f46'],
-    '體能性社團'    => ['bg'=>'#fee2e2','color'=>'#991b1b'],
-    '藝術性社團'    => ['bg'=>'#ede9fe','color'=>'#5b21b6'],
-    '音樂性社團'    => ['bg'=>'#fce7f3','color'=>'#9d174d'],
+    '學術性社團'     => ['bg'=>'#e8f0fe','color'=>'#1a56db'],
+    '休閒聯誼性社團'  => ['bg'=>'#fef3c7','color'=>'#92400e'],
+    '服務性社團'     => ['bg'=>'#d1fae5','color'=>'#065f46'],
+    '體能性社團'     => ['bg'=>'#fee2e2','color'=>'#991b1b'],
+    '藝術性社團'     => ['bg'=>'#ede9fe','color'=>'#5b21b6'],
+    '音樂性社團'     => ['bg'=>'#fce7f3','color'=>'#9d174d'],
 ];
 $cc = $catColors[$club['category']] ?? ['bg'=>'#f0f0f0','color'=>'#666'];
 
-// 分離進行中 & 已截止
+// 分離進行中 & 已截止（修正空值問題）
 $active_acts = [];
 $closed_acts = [];
 foreach ($activities as $a) {
-    if (strtotime($a['signup_deadline']) < time()) $closed_acts[] = $a;
-    else $active_acts[] = $a;
+    $dl = $a['signup_deadline'] ?? '';
+    if (!empty($dl) && strtotime($dl) < time()) {
+        $closed_acts[] = $a;
+    } else {
+        $active_acts[] = $a;
+    }
 }
+
+// 分享 URL（含 domain）
+$shareUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS']==='on' ? 'https' : 'http')
+          . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost')
+          . ($_SERVER['REQUEST_URI'] ?? '');
 
 require_once "header.php";
 ?>
@@ -73,7 +93,7 @@ require_once "header.php";
 *, *::before, *::after { box-sizing: border-box; }
 body { font-family: var(--sans); background: var(--paper); color: var(--ink); margin: 0; }
 
-/* ── Hero 橫幅圖 ── */
+/* ── Hero Banner ── */
 .club-banner {
     width: 100%; height: 300px; object-fit: cover; display: block;
     background: linear-gradient(135deg, #1a1a2e, #2d3a5e);
@@ -90,7 +110,10 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     background: var(--white); border-bottom: 1px solid var(--border);
     padding: .55rem 0; font-size: .78rem; color: var(--mute);
 }
-.breadcrumb-bar .inner { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem; display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+.breadcrumb-bar .inner {
+    max-width: 1100px; margin: 0 auto; padding: 0 1.5rem;
+    display: flex; align-items: center; gap: .4rem; flex-wrap: wrap;
+}
 .breadcrumb-bar a { color: var(--soft); text-decoration: none; }
 .breadcrumb-bar a:hover { color: var(--accent); }
 .breadcrumb-bar .sep { color: var(--border); }
@@ -105,10 +128,7 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     align-items: start;
 }
 
-/* ═══════════ LEFT ═══════════ */
-.detail-left {}
-
-/* 社團頭部卡 */
+/* ═══ LEFT ═══ */
 .club-header-card {
     background: var(--white); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 1.75rem 2rem;
@@ -132,17 +152,17 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     line-height: 1.2; margin: 0;
 }
 
-/* 訂閱區塊 */
+/* 訂閱區 */
 .sub-area { display: flex; flex-direction: column; align-items: flex-end; gap: .35rem; flex-shrink: 0; }
 .sub-count { font-size: .72rem; color: var(--mute); text-align: right; }
 .sub-count strong { color: var(--ink); font-size: .88rem; }
-
 .sub-btn {
     display: inline-flex; align-items: center; gap: .4rem;
     font-size: .85rem; font-weight: 600;
     padding: .5rem 1.15rem; border-radius: 8px;
     border: 2px solid var(--ink); background: transparent; color: var(--ink);
     cursor: pointer; transition: all .18s; white-space: nowrap;
+    text-decoration: none;
 }
 .sub-btn:hover { background: var(--ink); color: #fff; }
 .sub-btn.subscribed { background: var(--ink); color: #fff; }
@@ -180,7 +200,7 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
 .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 .desc-text { font-size: .9rem; color: var(--soft); line-height: 1.85; white-space: pre-wrap; }
 
-/* 近期活動 */
+/* 活動列表 */
 .act-item {
     display: block; padding: .85rem 1rem;
     border-radius: 8px; border: 1px solid var(--border);
@@ -209,9 +229,7 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
 }
 .closed-toggle:hover { color: var(--accent); border-color: var(--accent); background: #fff8f6; }
 
-/* ═══════════ RIGHT SIDEBAR ═══════════ */
-.detail-right {}
-
+/* ═══ RIGHT SIDEBAR ═══ */
 .info-card {
     background: var(--white); border: 1px solid var(--border);
     border-radius: var(--radius); overflow: hidden;
@@ -242,7 +260,6 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
 .info-value a { color: var(--accent); text-decoration: none; }
 .info-value a:hover { text-decoration: underline; }
 
-/* 訂閱人數大字 */
 .sub-count-big {
     text-align: center; padding: 1.2rem 1.2rem .6rem;
     border-bottom: 1px solid var(--border);
@@ -250,15 +267,7 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
 .sub-count-num { font-size: 2.2rem; font-weight: 800; color: var(--ink); line-height: 1; }
 .sub-count-unit { font-size: .72rem; color: var(--mute); margin-top: .2rem; }
 
-/* 返回按鈕 */
-.back-btn {
-    display: flex; align-items: center; gap: .4rem; justify-content: center;
-    padding: .65rem; font-size: .82rem; color: var(--soft); text-decoration: none;
-    border-top: 1px solid var(--border); transition: color .18s;
-}
-.back-btn:hover { color: var(--accent); }
-
-/* Share */
+/* 分享 */
 .share-card {
     background: var(--white); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 1rem 1.2rem;
@@ -275,7 +284,7 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
 .share-btn:hover { border-color: var(--ink); color: var(--ink); background: #fff; }
 .share-btn svg { width: 14px; height: 14px; }
 
-/* toast */
+/* Toast */
 #sub-toast {
     position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999;
     background: var(--ink); color: #fff; padding: .55rem 1.1rem;
@@ -340,7 +349,9 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
                     </div>
                     <button id="subBtn" class="sub-btn <?= $is_subscribed ? 'subscribed' : '' ?>"
                             data-club-id="<?= $id ?>" onclick="toggleSub(this)">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="<?= $is_subscribed ? 'currentColor' : 'none' ?>" stroke="currentColor" stroke-width="2">
+                        <svg width="15" height="15" viewBox="0 0 24 24"
+                             fill="<?= $is_subscribed ? 'currentColor' : 'none' ?>"
+                             stroke="currentColor" stroke-width="2">
                             <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                             <path d="M13.73 21a2 2 0 01-3.46 0"/>
                         </svg>
@@ -350,7 +361,7 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
                 <?php else: ?>
                 <div class="sub-area">
                     <div class="sub-count">訂閱人數 <strong><?= number_format($sub_count) ?></strong> 人</div>
-                    <a href="login.php" class="sub-btn" style="text-decoration:none">登入後訂閱</a>
+                    <a href="login.php" class="sub-btn">登入後訂閱</a>
                 </div>
                 <?php endif; ?>
             </div>
@@ -363,10 +374,10 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
             </div>
             <?php endif; ?>
 
-            <!-- 統計 -->
+            <!-- 統計（使用真實總數） -->
             <div class="stat-row">
                 <div class="stat-item">
-                    <div class="stat-num"><?= count($activities) ?></div>
+                    <div class="stat-num"><?= number_format($total_act_count) ?></div>
                     <div class="stat-label">活動總數</div>
                 </div>
                 <div class="stat-item">
@@ -393,32 +404,40 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
         <div class="section-card">
             <div class="section-label">近期活動</div>
 
+            <!-- 進行中 -->
             <?php if (empty($active_acts) && empty($closed_acts)): ?>
                 <p style="color:var(--mute);font-size:.85rem;">目前沒有活動</p>
             <?php endif; ?>
 
-            <!-- 進行中 -->
             <?php foreach ($active_acts as $act):
-                $isFree = str_contains($act['fee'],'免費') || $act['fee']==='0';
+                $isFree = str_contains((string)($act['fee'] ?? ''), '免費') || ($act['fee'] ?? '') === '0';
             ?>
             <a href="activity_view.php?id=<?= $act['id'] ?>" class="act-item">
                 <div class="act-item-header">
                     <span class="act-title"><?= htmlspecialchars($act['title']) ?></span>
-                    <span class="act-badge <?= $isFree ? 'free' : 'paid' ?>"><?= $isFree ? '免費' : htmlspecialchars($act['fee']) ?></span>
+                    <span class="act-badge <?= $isFree ? 'free' : 'paid' ?>">
+                        <?= $isFree ? '免費' : htmlspecialchars($act['fee'] ?? '') ?>
+                    </span>
                 </div>
                 <div class="act-meta-row">
+                    <?php if (!empty($act['event_start'])): ?>
                     <span>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
                         <?= date('Y/m/d H:i', strtotime($act['event_start'])) ?>
                     </span>
+                    <?php endif; ?>
+                    <?php if (!empty($act['location'])): ?>
                     <span>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
                         <?= htmlspecialchars($act['location']) ?>
                     </span>
+                    <?php endif; ?>
+                    <?php if (!empty($act['signup_deadline'])): ?>
                     <span>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
                         報名截止 <?= date('Y/m/d', strtotime($act['signup_deadline'])) ?>
                     </span>
+                    <?php endif; ?>
                 </div>
             </a>
             <?php endforeach; ?>
@@ -431,23 +450,29 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
             </button>
             <div id="closedActs" style="display:none; margin-top:.6rem;">
                 <?php foreach ($closed_acts as $act):
-                    $isFree = str_contains($act['fee'],'免費') || $act['fee']==='0';
+                    $isFree = str_contains((string)($act['fee'] ?? ''), '免費') || ($act['fee'] ?? '') === '0';
                 ?>
                 <a href="activity_view.php?id=<?= $act['id'] ?>" class="act-item is-closed">
                     <div class="act-item-header">
                         <span class="act-title"><?= htmlspecialchars($act['title']) ?></span>
-                        <span class="act-badge <?= $isFree ? 'free' : 'paid' ?>"><?= $isFree ? '免費' : htmlspecialchars($act['fee']) ?></span>
+                        <span class="act-badge <?= $isFree ? 'free' : 'paid' ?>">
+                            <?= $isFree ? '免費' : htmlspecialchars($act['fee'] ?? '') ?>
+                        </span>
                         <span class="act-badge closed">已截止</span>
                     </div>
                     <div class="act-meta-row">
+                        <?php if (!empty($act['event_start'])): ?>
                         <span>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
                             <?= date('Y/m/d', strtotime($act['event_start'])) ?>
                         </span>
+                        <?php endif; ?>
+                        <?php if (!empty($act['location'])): ?>
                         <span>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
                             <?= htmlspecialchars($act['location']) ?>
                         </span>
+                        <?php endif; ?>
                     </div>
                 </a>
                 <?php endforeach; ?>
@@ -462,7 +487,6 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     <!-- ═══ RIGHT SIDEBAR ═══ -->
     <div class="detail-right">
 
-        <!-- 聯絡資訊卡 -->
         <div class="info-card">
             <div class="info-card-header">社團資訊</div>
 
@@ -475,12 +499,15 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
             <!-- 分類 -->
             <div class="info-row">
                 <div class="info-icon purple">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/>
+                        <line x1="7" y1="7" x2="7.01" y2="7"/>
+                    </svg>
                 </div>
                 <div>
                     <div class="info-label">社團類型</div>
                     <div class="info-value">
-                        <a href="clubs.php?cat=<?= urlencode($club['category']) ?>" style="color:var(--accent)">
+                        <a href="clubs.php?cat=<?= urlencode($club['category']) ?>">
                             <?= htmlspecialchars($club['category']) ?>
                         </a>
                     </div>
@@ -491,23 +518,35 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
             <?php if (!empty($club['email'])): ?>
             <div class="info-row">
                 <div class="info-icon orange">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                        <polyline points="22,6 12,13 2,6"/>
+                    </svg>
                 </div>
                 <div>
                     <div class="info-label">聯絡信箱</div>
-                    <div class="info-value"><a href="mailto:<?= htmlspecialchars($club['email']) ?>"><?= htmlspecialchars($club['email']) ?></a></div>
+                    <div class="info-value">
+                        <a href="mailto:<?= htmlspecialchars($club['email']) ?>">
+                            <?= htmlspecialchars($club['email']) ?>
+                        </a>
+                    </div>
                 </div>
             </div>
             <?php endif; ?>
 
-            <!-- 活動數量 -->
+            <!-- 活動數量（使用真實總數） -->
             <div class="info-row">
                 <div class="info-icon blue">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2"/>
+                        <path d="M16 2v4M8 2v4M3 10h18"/>
+                    </svg>
                 </div>
                 <div>
                     <div class="info-label">活動數量</div>
-                    <div class="info-value">共 <?= count($activities) ?> 項活動（進行中 <?= count($active_acts) ?> 項）</div>
+                    <div class="info-value">
+                        共 <?= number_format($total_act_count) ?> 項活動（進行中 <?= count($active_acts) ?> 項）
+                    </div>
                 </div>
             </div>
 
@@ -515,23 +554,23 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
             <?php if (!empty($tags)): ?>
             <div class="info-row">
                 <div class="info-icon green">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/></svg>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/>
+                    </svg>
                 </div>
                 <div>
                     <div class="info-label">關鍵字</div>
                     <div class="info-value" style="display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.2rem;">
                         <?php foreach ($tags as $tag): ?>
-                        <span style="font-size:.7rem;padding:.1rem .45rem;border-radius:99px;background:var(--paper);border:1px solid var(--border);color:var(--soft)"><?= htmlspecialchars($tag) ?></span>
+                        <span style="font-size:.7rem;padding:.1rem .45rem;border-radius:99px;background:var(--paper);border:1px solid var(--border);color:var(--soft)">
+                            <?= htmlspecialchars($tag) ?>
+                        </span>
                         <?php endforeach; ?>
                     </div>
                 </div>
             </div>
             <?php endif; ?>
 
-            <!-- 返回 -->
-            <a href="clubs.php?cat=<?= urlencode($club['category']) ?>" class="back-btn">
-                ← 返回<?= htmlspecialchars($club['category']) ?>列表
-            </a>
         </div>
 
         <!-- 分享 -->
@@ -539,11 +578,18 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
             <div class="share-title">分享這個社團</div>
             <div class="share-btns">
                 <button class="share-btn" onclick="copyLink()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
+                        <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+                    </svg>
                     複製連結
                 </button>
-                <a class="share-btn" href="https://line.me/R/msg/text/?<?= urlencode($club['name'].' '.($_SERVER['REQUEST_URI'] ?? '')) ?>" target="_blank">
-                    <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M12 2C6.48 2 2 6.1 2 11.1c0 3.5 2.2 6.5 5.5 8.2-.2.8-.8 2.9-.9 3.3-.1.5.2.5.4.4.3-.1 3.8-2.5 5.3-3.5.4.1.8.1 1.2.1 5.5 0 10-4.1 10-9.1S17.5 2 12 2z"/></svg>
+                <a class="share-btn"
+                   href="https://line.me/R/msg/text/?<?= urlencode($club['name'] . ' ' . $shareUrl) ?>"
+                   target="_blank" rel="noopener">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
+                        <path d="M12 2C6.48 2 2 6.1 2 11.1c0 3.5 2.2 6.5 5.5 8.2-.2.8-.8 2.9-.9 3.3-.1.5.2.5.4.4.3-.1 3.8-2.5 5.3-3.5.4.1.8.1 1.2.1 5.5 0 10-4.1 10-9.1S17.5 2 12 2z"/>
+                    </svg>
                     Line
                 </a>
             </div>
@@ -556,6 +602,7 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
 
 <script>
 function toggleSub(btn) {
+    btn.disabled = true; // 防止連點
     fetch("api/toggle_subscription.php", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -563,33 +610,34 @@ function toggleSub(btn) {
     })
     .then(r => r.json())
     .then(data => {
-        if (!data.success) { showToast(data.message); return; }
-        const icon = btn.querySelector('svg');
+        btn.disabled = false;
+        if (!data.success) { showToast(data.message || '操作失敗'); return; }
         if (data.subscribed) {
             btn.classList.add("subscribed");
             btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg> 已訂閱';
-            // 更新人數
             updateSubCount(1);
         } else {
             btn.classList.remove("subscribed");
             btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg> 訂閱此社團';
             updateSubCount(-1);
         }
-        showToast(data.message);
+        showToast(data.message || (data.subscribed ? '訂閱成功' : '已取消訂閱'));
     })
-    .catch(() => showToast("操作失敗，請稍後再試"));
+    .catch(() => {
+        btn.disabled = false;
+        showToast("操作失敗，請稍後再試");
+    });
 }
 
 function updateSubCount(delta) {
-    // 更新右側大數字
-    const big = document.querySelector('.sub-count-num');
-    if (big) big.textContent = Math.max(0, parseInt(big.textContent.replace(/,/g,'')) + delta).toLocaleString();
-    // 更新 sub-area 小字
-    const small = document.querySelector('.sub-area .sub-count strong');
-    if (small) small.textContent = Math.max(0, parseInt(small.textContent.replace(/,/g,'')) + delta).toLocaleString();
-    // 更新 stat-row
-    const stats = document.querySelectorAll('.stat-item .stat-num');
-    if (stats[2]) stats[2].textContent = Math.max(0, parseInt(stats[2].textContent.replace(/,/g,'')) + delta).toLocaleString();
+    const targets = [
+        document.querySelector('.sub-count-num'),
+        document.querySelector('.sub-area .sub-count strong'),
+        document.querySelectorAll('.stat-item .stat-num')[2]
+    ];
+    targets.forEach(el => {
+        if (el) el.textContent = Math.max(0, parseInt(el.textContent.replace(/,/g, '')) + delta).toLocaleString();
+    });
 }
 
 function toggleClosed(btn) {
@@ -598,18 +646,22 @@ function toggleClosed(btn) {
     const isOpen = div.style.display !== 'none';
     div.style.display = isOpen ? 'none' : 'block';
     arrow.style.transform = isOpen ? '' : 'rotate(180deg)';
+    const count = <?= count($closed_acts) ?>;
     btn.childNodes[1].textContent = isOpen
-        ? ' 顯示已截止活動（<?= count($closed_acts) ?> 項）'
-        : ' 隱藏已截止活動（<?= count($closed_acts) ?> 項）';
+        ? ` 顯示已截止活動（${count} 項）`
+        : ` 隱藏已截止活動（${count} 項）`;
 }
 
 function copyLink() {
-    navigator.clipboard.writeText(window.location.href).then(() => showToast('連結已複製 ✓'));
+    navigator.clipboard.writeText(window.location.href)
+        .then(() => showToast('連結已複製 ✓'))
+        .catch(() => showToast('複製失敗，請手動複製網址'));
 }
 
 function showToast(msg) {
     const t = document.getElementById("sub-toast");
-    t.textContent = msg; t.style.opacity = "1";
+    t.textContent = msg;
+    t.style.opacity = "1";
     clearTimeout(t._t);
     t._t = setTimeout(() => { t.style.opacity = "0"; }, 2200);
 }
