@@ -65,7 +65,14 @@ if (isset($pdo)) {
     $sql .= " ORDER BY a.$sort_by DESC";
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
-    $activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $all_activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // 過濾掉活動時間結束超過 30 天的活動
+    $activities = array_filter($all_activities, function($act) {
+        if (empty($act['event_end'])) return true; // 沒有結束時間的保留
+        return (time() - strtotime($act['event_end'])) <= 30 * 86400;
+    });
+    $activities = array_values($activities);
 }
 
 function isFree($fee): bool {
@@ -75,7 +82,7 @@ function isFree($fee): bool {
 function formatDate($dt): string { return empty($dt) ? '未設定' : date('Y/m/d', strtotime($dt)); }
 function formatDateTime($dt): string { return empty($dt) ? '未設定' : date('Y/m/d H:i', strtotime($dt)); }
 function isDeadlineSoon($d): bool { if(empty($d)) return false; $t=strtotime($d); return ($t-time())<=7*86400 && $t>=time(); }
-function isDeadlinePassed($d): bool { return !empty($d) && strtotime($d)<time(); }
+function isDeadlinePassed($d): bool { return !empty($d) && strtotime($d)<strtotime(date("Y-m-d")); }
 
 function qsMerge(array $override, array $exclude=[]): string {
     $base = $_GET;
@@ -233,10 +240,10 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
 .cat-pill:hover { background: var(--paper); color: var(--ink); }
 
 .tag { display: inline-block; padding: .12rem .5rem; border-radius: 99px; font-size: .65rem; font-weight: 600; line-height: 1.5; }
-.tag-free   { background: #e6f4ec; color: #1e7a47; }
-.tag-paid   { background: #fff4e5; color: #b06000; }
-.tag-soon   { background: #fff0ec; color: #c8502a; }
-.tag-closed { background: #ebebeb; color: #999; }
+.tag-free        { background: #e6f4ec; color: #1e7a47; }
+.tag-paid        { background: #fff4e5; color: #b06000; }
+.tag-soon        { background: #fff0ec; color: #c8502a; }
+.tag-deadline    { background: #ebebeb; color: #888; }  /* 報名截止 */
 
 .act-title { font-family: var(--serif); font-size: .98rem; font-weight: 700; color: var(--ink); margin-bottom: .35rem; line-height: 1.4; }
 .act-card.is-closed .act-title { color: var(--mute); }
@@ -264,6 +271,7 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
 .view-btn:hover { background: var(--accent); color: #fff; }
 .view-btn.closed { background: #e0e0e0; color: #aaa; pointer-events: none; }
 
+/* 收藏按鈕：disabled 狀態 */
 .bookmark-btn {
     display: inline-flex; align-items: center; justify-content: center;
     width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border);
@@ -272,6 +280,10 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
 .bookmark-btn:hover { border-color: var(--accent); color: var(--accent); }
 .bookmark-btn.saved { background: var(--accent); border-color: var(--accent); color: #fff; }
 .bookmark-btn svg { width: 13px; height: 13px; }
+.bookmark-btn:disabled {
+    opacity: .35; cursor: not-allowed;
+    pointer-events: none;
+}
 
 /* ── 已截止折疊區 ── */
 .closed-section { margin-top: 1.25rem; }
@@ -405,7 +417,7 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
                 <div class="top-bar-count">
                     進行中 <strong><?= count($active_acts) ?></strong> 項
                     <?php if ($closed_acts): ?>
-                    　已截止 <strong><?= count($closed_acts) ?></strong> 項
+                    　報名截止 <strong><?= count($closed_acts) ?></strong> 項
                     <?php endif; ?>
                 </div>
             </div>
@@ -440,7 +452,7 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
                 <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
             </svg>
             <h3>目前沒有進行中的活動</h3>
-            <p>下方可查看已截止的歷史活動</p>
+            <p>下方可查看報名截止的歷史活動</p>
         </div>
 
         <?php else: ?>
@@ -499,12 +511,12 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
         </div>
         <?php endif; ?>
 
-        <!-- ── 已截止活動（折疊） ── -->
+        <!-- ── 報名截止活動（折疊） ── -->
         <?php if (!empty($closed_acts)): ?>
         <div class="closed-section">
             <button class="closed-toggle-btn" id="closedToggleBtn" onclick="toggleClosed()">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
-                顯示已截止活動（<?= count($closed_acts) ?> 項）
+                顯示報名截止活動（<?= count($closed_acts) ?> 項）
             </button>
             <div class="closed-list" id="closedList" hidden>
                 <?php foreach ($closed_acts as $i => $act): ?>
@@ -523,7 +535,7 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
                             <?php endif; ?>
                             <?php if ($free): ?><span class="tag tag-free">免費</span>
                             <?php else: ?><span class="tag tag-paid"><?= htmlspecialchars($act['fee'] ?? '') ?></span><?php endif; ?>
-                            <span class="tag tag-closed">已截止</span>
+                            <span class="tag tag-deadline">報名截止</span>
                         </div>
                         <h2 class="act-title"><?= htmlspecialchars($act['title'] ?? '') ?></h2>
                         <p class="act-desc"><?= htmlspecialchars($act['description'] ?? '') ?></p>
@@ -544,10 +556,11 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
                             報名截止：<?= formatDate($act['signup_deadline'] ?? '') ?>
                         </span>
                         <span class="act-footer-right">
-                            <button class="bookmark-btn <?= $isFav?'saved':'' ?>" data-type="activity" data-id="<?= $act['id'] ?>" onclick="toggleFavorite(this)">
+                            <!-- 已截止活動收藏按鈕：disabled，不可點擊 -->
+                            <button class="bookmark-btn <?= $isFav?'saved':'' ?>" disabled title="報名截止後無法修改收藏">
                                 <svg viewBox="0 0 24 24" fill="<?= $isFav?'currentColor':'none' ?>" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
                             </button>
-                            <a href="activity_view.php?id=<?= $act['id'] ?>" class="view-btn closed">已截止</a>
+                            <a href="activity_view.php?id=<?= $act['id'] ?>" class="view-btn closed">報名截止</a>
                         </span>
                     </div>
                 </article>
@@ -567,11 +580,10 @@ function toggleClosed() {
     const isHidden = list.hidden;
     list.hidden = !isHidden;
     btn.classList.toggle('open', isHidden);
-    btn.querySelector('svg').style.transform = isHidden ? 'rotate(180deg)' : '';
     if (isHidden) {
-        btn.childNodes[1].textContent = ' 隱藏已截止活動（<?= count($closed_acts) ?> 項）';
+        btn.childNodes[1].textContent = ' 隱藏報名截止活動（<?= count($closed_acts) ?> 項）';
     } else {
-        btn.childNodes[1].textContent = ' 顯示已截止活動（<?= count($closed_acts) ?> 項）';
+        btn.childNodes[1].textContent = ' 顯示報名截止活動（<?= count($closed_acts) ?> 項）';
     }
 }
 
