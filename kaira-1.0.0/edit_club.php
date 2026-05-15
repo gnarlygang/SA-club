@@ -16,19 +16,31 @@ try {
         [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
     );
 
+    // 所有可用標籤
+    $all_tags_stmt = $pdo->query("SELECT DISTINCT tag_name FROM club_tags ORDER BY tag_name ASC");
+    $all_tags = $all_tags_stmt->fetchAll(PDO::FETCH_COLUMN);
+
     // 處理 POST 送出
     if ($_SERVER["REQUEST_METHOD"] === "POST") {
-        $description  = trim($_POST["description"]  ?? "");
-        $image        = trim($_POST["image"]         ?? "");
-        $email        = trim($_POST["email"]          ?? "");
-        $short_name   = trim($_POST["short_name"]     ?? "");
+        $description   = trim($_POST["description"]  ?? "");
+        $image         = trim($_POST["image"]         ?? "");
+        $email         = trim($_POST["email"]          ?? "");
+        $short_name    = trim($_POST["short_name"]     ?? "");
+        $selected_tags = $_POST["tags"] ?? [];
+
+        // 只保留合法標籤
+        $selected_tags = array_values(array_intersect($selected_tags, $all_tags));
 
         if ($description === "") {
             $error = "社團介紹不可為空。";
         } elseif ($email !== "" && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $error = "信箱格式不正確。";
+        } elseif (count($selected_tags) < 1) {
+            $error = "請至少選擇 1 個標籤。";
+        } elseif (count($selected_tags) > 3) {
+            $error = "最多只能選擇 3 個標籤。";
         } else {
-            // 更新 clubs 表（介紹、圖片、簡稱）
+            // 更新 clubs 表
             $stmt = $pdo->prepare("UPDATE clubs SET description = :description, image = :image, short_name = :short_name
                                    WHERE id = :id AND user_id = :uid");
             $stmt->execute([
@@ -45,6 +57,13 @@ try {
                 ":email" => $email,
                 ":uid"   => $_SESSION["user_id"] ?? null,
             ]);
+
+            // 更新標籤：先刪再寫
+            $pdo->prepare("DELETE FROM club_tags WHERE club_id = ?")->execute([$club_id]);
+            $ins = $pdo->prepare("INSERT INTO club_tags (club_id, tag_name) VALUES (?, ?)");
+            foreach ($selected_tags as $tag) {
+                $ins->execute([$club_id, $tag]);
+            }
 
             header("Location: create_club.php");
             exit;
@@ -65,6 +84,11 @@ try {
     ]);
     $club = $stmt->fetch(PDO::FETCH_ASSOC);
 
+    // 取得現有標籤
+    $cur_tags_stmt = $pdo->prepare("SELECT tag_name FROM club_tags WHERE club_id = ? ORDER BY id");
+    $cur_tags_stmt->execute([$club_id]);
+    $current_tags = $cur_tags_stmt->fetchAll(PDO::FETCH_COLUMN);
+
 } catch (PDOException $e) {
     die("資料庫連線失敗：" . $e->getMessage());
 }
@@ -73,6 +97,7 @@ $form_description = isset($_POST["description"]) ? $_POST["description"] : ($clu
 $form_image       = isset($_POST["image"])       ? $_POST["image"]       : ($club["image"]       ?? "");
 $form_email       = isset($_POST["email"])       ? $_POST["email"]       : ($club["email"]       ?? "");
 $form_short_name  = isset($_POST["short_name"])  ? $_POST["short_name"]  : ($club["short_name"]  ?? "");
+$form_tags        = isset($_POST["tags"])        ? $_POST["tags"]        : $current_tags;
 
 require_once "header.php";
 ?>
@@ -442,6 +467,27 @@ require_once "header.php";
       margin-bottom: 20px;
     }
 
+    /* ─── Tag picker ─── */
+    .tag-picker-wrap {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      padding: 14px; background: #f8fafc;
+      border: 1.5px solid var(--input-border); border-radius: 10px;
+      max-height: 220px; overflow-y: auto;
+    }
+    .tag-chip input[type="checkbox"] { display: none; }
+    .tag-chip label {
+      display: inline-block; padding: 5px 13px; border-radius: 999px;
+      font-size: 12.5px; font-weight: 500;
+      border: 1.5px solid #c8d0dc; background: #fff; color: #556;
+      cursor: pointer; transition: all .15s; user-select: none;
+    }
+    .tag-chip label:hover { border-color: #6e8ab0; background: #eef3fa; color: #2d3a4a; }
+    .tag-chip input:checked + label { background: #2d3a4a; border-color: #2d3a4a; color: #fff; }
+    .tag-chip input:disabled + label { opacity: .45; cursor: not-allowed; }
+    .tag-chip input:disabled + label:hover { border-color: #c8d0dc; background: #fff; color: #556; }
+    .tag-count-hint { font-size: 12px; color: #9aa; margin-top: 6px; }
+    .tag-count-hint.warn { color: #c0392b; font-weight: 600; }
+
     .divider {
       border: none;
       border-top: 1px solid #e8ecf0;
@@ -650,6 +696,33 @@ require_once "header.php";
               <div class="hint-text">社團的常用簡稱，最多 20 字，可留空。</div>
             </div>
 
+            <!-- 標籤選擇 -->
+            <div class="mb-4">
+              <label class="form-label">
+                社團標籤 <span style="color:#c0392b;">*</span>
+              </label>
+              <div class="tag-picker-wrap" id="tagPickerWrap">
+                <?php foreach ($all_tags as $tag):
+                  $checked = in_array($tag, $form_tags) ? 'checked' : '';
+                ?>
+                <span class="tag-chip">
+                  <input type="checkbox"
+                         name="tags[]"
+                         id="tag_<?= htmlspecialchars($tag) ?>"
+                         value="<?= htmlspecialchars($tag) ?>"
+                         <?= $checked ?>
+                         onchange="onTagChange(this)">
+                  <label for="tag_<?= htmlspecialchars($tag) ?>">
+                    <?= htmlspecialchars($tag) ?>
+                  </label>
+                </span>
+                <?php endforeach; ?>
+              </div>
+              <div class="tag-count-hint" id="tagHint">
+                已選擇 <strong id="tagCountNum"><?= count($form_tags) ?></strong> / 3 個標籤（至少 1 個，最多 3 個）
+              </div>
+            </div>
+
             <hr class="divider">
 
             <button type="submit" class="btn-save">
@@ -678,6 +751,32 @@ require_once "header.php";
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+    // Tag picker
+    function onTagChange(checkbox) {
+      const allChecked = document.querySelectorAll('#tagPickerWrap input[type="checkbox"]:checked');
+      const count = allChecked.length;
+      document.getElementById('tagCountNum').textContent = count;
+      const hintEl = document.getElementById('tagHint');
+      if (count >= 3) {
+        document.querySelectorAll('#tagPickerWrap input[type="checkbox"]:not(:checked)')
+          .forEach(cb => { cb.disabled = true; });
+        hintEl.className = 'tag-count-hint warn';
+      } else {
+        document.querySelectorAll('#tagPickerWrap input[type="checkbox"]')
+          .forEach(cb => { cb.disabled = false; });
+        hintEl.className = 'tag-count-hint';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const checked = document.querySelectorAll('#tagPickerWrap input[type="checkbox"]:checked');
+      if (checked.length >= 3) {
+        document.querySelectorAll('#tagPickerWrap input[type="checkbox"]:not(:checked)')
+          .forEach(cb => { cb.disabled = true; });
+        document.getElementById('tagHint').className = 'tag-count-hint warn';
+      }
+    });
+
     // Image preview
     const imageInput = document.getElementById("imageInput");
     const previewWrap = document.getElementById("previewWrap");
