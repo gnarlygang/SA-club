@@ -12,7 +12,6 @@ function fmtDT($v){ return $v ? date('Y/m/d H:i', strtotime($v)) : '—'; }
 // 自動關閉
 $pdo->prepare("UPDATE forms SET status='closed' WHERE status='open' AND close_at IS NOT NULL AND close_at < NOW()")->execute();
 
-// ★ 修正：改用 $_SESSION['user_id'] 而非 $_SESSION['user']
 if (empty($_SESSION['user_id'])) {
     header('Location: login.php?redirect='.urlencode($_SERVER['REQUEST_URI'])); exit;
 }
@@ -79,10 +78,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submi
         }
 
         if (!str_starts_with($msg, 'error')) {
-            // 驗證必填
+            // 驗證必填（checkbox 為陣列，其他為字串，統一處理）
             $hasError = false;
             foreach ($fields as $f) {
-                if ($f['is_required'] && empty(trim($_POST['field_'.$f['id']] ?? ''))) {
+                $raw = $_POST['field_'.$f['id']] ?? '';
+                $val = is_array($raw) ? implode(', ', $raw) : trim($raw);
+                if ($f['is_required'] && $val === '') {
                     $msg = 'error:請填寫所有必填欄位（' . $f['label'] . '）';
                     $hasError = true; break;
                 }
@@ -97,7 +98,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submi
                 $subId = $pdo->lastInsertId();
 
                 foreach ($fields as $f) {
-                    $ans = trim($_POST['field_'.$f['id']] ?? '');
+                    $raw = $_POST['field_'.$f['id']] ?? '';
+                    // ★ 修正：checkbox 傳回陣列，用逗號串接後存入
+                    $ans = is_array($raw) ? implode(', ', $raw) : trim($raw);
                     $pdo->prepare("INSERT INTO form_answers (submission_id, field_id, answer) VALUES (?,?,?)")
                         ->execute([$subId, $f['id'], $ans]);
                 }
@@ -211,7 +214,11 @@ textarea{resize:vertical;min-height:90px}
 </div>
 
 <?php if ($msg): $isOk=str_starts_with($msg,'ok:'); ?>
-  <div style="border-radius:0;margin:0"><div class="msg <?= $isOk?'ok':'err' ?>" style="border-radius:0;margin:0"><?= h(substr($msg,3)) ?></div></div>
+  <div style="border-radius:0;margin:0">
+    <div class="msg <?= $isOk?'ok':'err' ?>" style="border-radius:0;margin:0">
+      <?= h(substr($msg,3)) ?>
+    </div>
+  </div>
 <?php endif; ?>
 
 <?php if ($form['status'] !== 'open' && !$existing): ?>
@@ -241,10 +248,23 @@ textarea{resize:vertical;min-height:90px}
   </div>
 
   <table class="status-table">
-    <tr><td>報名狀態</td><td><span class="status-badge <?= h($existing['status']) ?>"><?= ['pending'=>'待審核','approved'=>'審核通過','rejected'=>'未通過'][$existing['status']] ?></span></td></tr>
+    <tr>
+      <td>報名狀態</td>
+      <td><span class="status-badge <?= h($existing['status']) ?>">
+        <?= ['pending'=>'待審核','approved'=>'審核通過','rejected'=>'未通過'][$existing['status']] ?>
+      </span></td>
+    </tr>
     <tr><td>報名時間</td><td><?= fmtDT($existing['submitted_at']) ?></td></tr>
-    <?php if ($existing['reviewed_at']): ?><tr><td>審核時間</td><td><?= fmtDT($existing['reviewed_at']) ?></td></tr><?php endif; ?>
-    <tr><td>確認參與</td><td><?= $existing['confirmed'] ? '✅ 已確認（'.fmtDT($existing['confirmed_at']).'）' : '⬜ 尚未確認' ?></td></tr>
+    <?php if ($existing['reviewed_at']): ?>
+      <tr><td>審核時間</td><td><?= fmtDT($existing['reviewed_at']) ?></td></tr>
+    <?php endif; ?>
+    <tr>
+      <td>確認參與</td>
+      <td><?= $existing['confirmed']
+            ? '✅ 已確認（'.fmtDT($existing['confirmed_at']).'）'
+            : '⬜ 尚未確認' ?>
+      </td>
+    </tr>
   </table>
 
   <?php if ($existing['note']): ?>
@@ -297,8 +317,9 @@ textarea{resize:vertical;min-height:90px}
     <input type="hidden" name="action" value="submit">
 
     <?php foreach ($fields as $f):
-      $fid  = 'field_'.$f['id'];
-      $opts = array_filter(array_map('trim', explode('|', $f['options'] ?? '')));
+      $fid     = 'field_'.$f['id'];
+      $opts    = array_filter(array_map('trim', explode('|', $f['options'] ?? '')));
+      $postVal = $_POST[$fid] ?? '';
     ?>
     <div class="field-group">
       <label>
@@ -307,36 +328,64 @@ textarea{resize:vertical;min-height:90px}
       </label>
 
       <?php if ($f['field_type']==='textarea'): ?>
-        <textarea name="<?= h($fid) ?>" <?= $f['is_required']?'required':'' ?> placeholder="請輸入…"><?= h($_POST[$fid] ?? '') ?></textarea>
+        <textarea name="<?= h($fid) ?>" <?= $f['is_required']?'required':'' ?> placeholder="請輸入…"><?= h(is_array($postVal) ? implode(', ',$postVal) : $postVal) ?></textarea>
+
       <?php elseif ($f['field_type']==='select'): ?>
         <select name="<?= h($fid) ?>" <?= $f['is_required']?'required':'' ?>>
           <option value="">── 請選擇 ──</option>
-          <?php foreach ($opts as $o): ?><option value="<?= h($o) ?>" <?= ($_POST[$fid]??'')===$o?'selected':'' ?>><?= h($o) ?></option><?php endforeach; ?>
+          <?php foreach ($opts as $o): ?>
+            <option value="<?= h($o) ?>" <?= (!is_array($postVal) && $postVal===$o)?'selected':'' ?>>
+              <?= h($o) ?>
+            </option>
+          <?php endforeach; ?>
         </select>
+
       <?php elseif ($f['field_type']==='radio'): ?>
         <div class="radio-group">
           <?php foreach ($opts as $o): ?>
-            <label><input type="radio" name="<?= h($fid) ?>" value="<?= h($o) ?>" <?= ($_POST[$fid]??'')===$o?'checked':'' ?> <?= $f['is_required']?'required':'' ?>><?= h($o) ?></label>
-          <?php endforeach; ?>
-        </div>
-      <?php elseif ($f['field_type']==='checkbox'): ?>
-        <div class="checkbox-group">
-          <?php foreach ($opts as $o): ?>
             <label>
-              <input type="checkbox" name="<?= h($fid) ?>[]" value="<?= h($o) ?>"
-                <?php $checked = $_POST[$fid] ?? []; if (is_array($checked) && in_array($o, $checked)) echo 'checked'; ?>>
+              <input type="radio" name="<?= h($fid) ?>" value="<?= h($o) ?>"
+                <?= (!is_array($postVal) && $postVal===$o)?'checked':'' ?>
+                <?= $f['is_required']?'required':'' ?>>
               <?= h($o) ?>
             </label>
           <?php endforeach; ?>
         </div>
+
+      <?php elseif ($f['field_type']==='checkbox'): ?>
+        <?php $checkedVals = is_array($postVal) ? $postVal : []; ?>
+        <div class="checkbox-group">
+          <?php foreach ($opts as $o): ?>
+            <label>
+              <input type="checkbox" name="<?= h($fid) ?>[]" value="<?= h($o) ?>"
+                <?= in_array($o, $checkedVals)?'checked':'' ?>>
+              <?= h($o) ?>
+            </label>
+          <?php endforeach; ?>
+        </div>
+
       <?php elseif ($f['field_type']==='number'): ?>
-        <input type="number" name="<?= h($fid) ?>" <?= $f['is_required']?'required':'' ?> value="<?= h($_POST[$fid] ?? '') ?>">
+        <input type="number" name="<?= h($fid) ?>"
+               <?= $f['is_required']?'required':'' ?>
+               value="<?= h(is_array($postVal)?'':$postVal) ?>">
+
       <?php elseif ($f['field_type']==='email'): ?>
-        <input type="email" name="<?= h($fid) ?>" <?= $f['is_required']?'required':'' ?> value="<?= h($_POST[$fid] ?? '') ?>" placeholder="example@email.com">
+        <input type="email" name="<?= h($fid) ?>"
+               <?= $f['is_required']?'required':'' ?>
+               value="<?= h(is_array($postVal)?'':$postVal) ?>"
+               placeholder="example@email.com">
+
       <?php elseif ($f['field_type']==='tel'): ?>
-        <input type="tel" name="<?= h($fid) ?>" <?= $f['is_required']?'required':'' ?> value="<?= h($_POST[$fid] ?? '') ?>" placeholder="09xxxxxxxx">
+        <input type="tel" name="<?= h($fid) ?>"
+               <?= $f['is_required']?'required':'' ?>
+               value="<?= h(is_array($postVal)?'':$postVal) ?>"
+               placeholder="09xxxxxxxx">
+
       <?php else: ?>
-        <input type="text" name="<?= h($fid) ?>" <?= $f['is_required']?'required':'' ?> value="<?= h($_POST[$fid] ?? '') ?>" placeholder="請輸入…">
+        <input type="text" name="<?= h($fid) ?>"
+               <?= $f['is_required']?'required':'' ?>
+               value="<?= h(is_array($postVal)?'':$postVal) ?>"
+               placeholder="請輸入…">
       <?php endif; ?>
     </div>
     <?php endforeach; ?>

@@ -40,6 +40,16 @@ try {
     $stmt2->execute([":club_id" => $activity['club_id'], ":aid" => $activity_id]);
     $related = $stmt2->fetchAll(PDO::FETCH_ASSOC);
 
+    // 查詢此活動對應的開放表單
+    $formStmt = $pdo->prepare("
+        SELECT id FROM forms
+        WHERE activity_id = ? AND status = 'open'
+        ORDER BY created_at DESC
+        LIMIT 1
+    ");
+    $formStmt->execute([$activity_id]);
+    $actForm = $formStmt->fetch(PDO::FETCH_ASSOC);
+
 } catch (PDOException $e) {
     die("資料庫查詢失敗：" . $e->getMessage());
 }
@@ -212,9 +222,17 @@ $isFav = !empty($activity['is_favorited']);
       background: #aab; cursor: not-allowed;
       box-shadow: none; pointer-events: none;
     }
+    .btn-signup.no-form-btn {
+      background: #8a96a8; cursor: not-allowed;
+      box-shadow: none; pointer-events: none;
+    }
     .deadline-notice {
       text-align: center; margin-top: 10px;
       font-size: 13px; color: #c0392b; font-weight: 600;
+    }
+    .no-form-notice {
+      text-align: center; margin-top: 10px;
+      font-size: 13px; color: #8a96a8; font-weight: 600;
     }
 
     /* Related */
@@ -372,11 +390,20 @@ $isFav = !empty($activity['is_favorited']);
           <a href="#" class="btn-signup disabled-btn">
             <i class="bi bi-calendar-x me-2"></i>報名已截止
           </a>
-          <div class="deadline-notice">此活動報名已於 <?= fmt_date($activity["signup_deadline"]) ?> 截止</div>
-        <?php else: ?>
-          <a href="form_apply.php?activity_id=<?= $activity_id ?>" class="btn-signup">
+          <div class="deadline-notice">
+            此活動報名已於 <?= fmt_date($activity["signup_deadline"]) ?> 截止
+          </div>
+
+        <?php elseif (!empty($actForm)): ?>
+          <a href="form_apply.php?form_id=<?= $actForm['id'] ?>" class="btn-signup">
             <i class="bi bi-pencil-square me-2"></i>我要報名
           </a>
+
+        <?php else: ?>
+          <a href="#" class="btn-signup no-form-btn">
+            <i class="bi bi-slash-circle me-2"></i>報名表單尚未開放
+          </a>
+          <div class="no-form-notice">社團尚未建立此活動的報名表單，請稍後再查看</div>
         <?php endif; ?>
       </div>
 
@@ -438,7 +465,6 @@ function toggleFavorite(btn) {
       btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg> 收藏活動`;
       showToast("已取消收藏");
     }
-    // 重新綁定 onclick
     btn.onclick = () => toggleFavorite(btn);
   })
   .catch(() => alert("收藏操作失敗"));
