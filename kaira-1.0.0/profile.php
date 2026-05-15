@@ -484,7 +484,7 @@ function buildUrl($club_id, $sort_by, $order) {
 
     /* ── Footer ── */
     footer {
-      background: #afbac7; color: #333;
+      background: #1a2744; color: #333;
       padding: 14px 0; text-align: center; font-size: 12px;
     }
 
@@ -560,12 +560,12 @@ function buildUrl($club_id, $sort_by, $order) {
           </button>
           <button class="pnav-btn" id="btn-favorites" onclick="showPanel('favorites', this)">
             <i class="bi bi-heart-fill"></i>
-            收藏活動
+            我的收藏
             <span class="badge-count"><?= count($activityFavorites) + count($postFavorites) ?></span>
           </button>
           <button class="pnav-btn locked" disabled>
             <i class="bi bi-calendar-check-fill"></i>
-            曾參與的活動
+            活動紀錄
             <span class="pnav-soon">即將推出</span>
           </button>
         </div>
@@ -805,7 +805,7 @@ function buildUrl($club_id, $sort_by, $order) {
   </div>
 </div>
 
-<footer>天主教輔仁大學 © 2014-2026 版權所有</footer>
+ <!-- <footer>天主教輔仁大學 © 2014-2026 版權所有</footer>-->
 
 <script>
 /* ── Panel switching ── */
@@ -916,5 +916,6 @@ function removeFavorite(btn) {
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+<?php require_once "footer.php"; ?>
 </body>
 </html>

@@ -91,7 +91,7 @@ require_once "header.php";
 
   <style>
     :root {
-      --footer-bg: #afbac7;
+      --footer-bg: #1a2744;
       --card-shadow: 0 2px 12px rgba(60,80,120,0.08);
       --border: #e8ecf0;
       --accent: #2d3a4a;
