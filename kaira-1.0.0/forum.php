@@ -23,7 +23,10 @@ $current_role = (int)($_SESSION['role'] ?? 0);
 
 $is_logged_in = !empty($_SESSION['user_id']);
 $is_student = $is_logged_in && $current_role === 3;
+$is_club = $is_logged_in && $current_role === 2;
+$is_admin = $is_logged_in && $current_role === 4;
 $is_visitor = !$is_logged_in;
+$can_report = $is_student || $is_club;
 
 // 只有學生跟訪客顯示收藏按鈕
 $show_favorite_btn = $is_student || $is_visitor;
@@ -263,6 +266,76 @@ require_once "header.php";
     color: white;
 }
 
+/* ── 檢舉按鈕／管理員檢舉區（前端暫存） ── */
+.forum-report-btn {
+    flex-shrink: 0;
+    border: 1px solid #f1d4d4;
+    background: #fff7f7;
+    color: #b45353;
+    border-radius: 999px;
+    padding: 7px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: 0.2s ease;
+    white-space: nowrap;
+}
+.forum-report-btn:hover { 
+    border-color: #b91c1c; 
+    background: #fee2e2; 
+    color: #991b1b; 
+}
+.report-admin-panel { 
+    margin-top: 18px; 
+    padding: 14px; 
+    border-top: 1px solid #e8e8ee; 
+}
+.report-admin-title { 
+    font-size: 13px; 
+    font-weight: 700; 
+    color: #1e3a8a; 
+    margin-bottom: 10px; 
+    display: flex; 
+    align-items: center; 
+    gap: 6px; 
+}
+.report-admin-empty { 
+    font-size: 12px; 
+    color: #8892a6; 
+    line-height: 1.6; 
+}
+.report-admin-item { 
+    border: 1px solid #e5e7eb; 
+    background: #f8fafc; 
+    border-radius: 10px; 
+    padding: 10px; 
+    margin-bottom: 8px; 
+    font-size: 12px; 
+    color: #475569; 
+    line-height: 1.55; 
+}
+.report-admin-item strong { 
+    color: #0f172a; 
+}
+.report-admin-meta { 
+    color: #94a3b8; 
+    font-size: 11px; 
+    margin-top: 4px; 
+}
+.report-clear-btn { 
+    width: 100%; 
+    border: 1px solid #cbd5e1; 
+    background: #ffffff; 
+    color: #475569; 
+    border-radius: 8px; 
+    padding: 7px 10px; 
+    font-size: 12px; 
+    cursor: pointer; 
+    margin-top: 8px; 
+}
+.report-clear-btn:hover { 
+    background: #f1f5f9; 
+}
+
 /* ── Toast ── */
 #favorite-toast {
     position: fixed;
@@ -321,6 +394,16 @@ require_once "header.php";
                     </a>
                 <?php endforeach; ?>
             </div>
+
+            <?php if ($is_admin): ?>
+                <div class="report-admin-panel">
+                    <div class="report-admin-title">
+                        <i class="bi bi-flag-fill"></i> 檢舉內容管理
+                    </div>
+                    <div id="report-admin-list" class="report-admin-empty">目前沒有檢舉紀錄</div>
+                    <button type="button" class="report-clear-btn" >查看所有檢舉紀錄</button>
+                </div>
+            <?php endif; ?>
 
         </div>
     </aside>
@@ -445,7 +528,8 @@ require_once "header.php";
                         </div>
                     </a>
 
-                    <div class="post-card-actions">
+                    <div class="post-card-actions" style="gap:8px; align-items:center;">
+
                         <a href="forum_post.php?id=<?= htmlspecialchars($post["id"]) ?>" class="post-read-btn">
                             查看貼文
                         </a>
@@ -500,6 +584,73 @@ function toggleFavorite(btn) {
         alert("收藏操作失敗"); 
     });
 }
+
+function reportForumItem(type, id, title) {
+    const typeLabel = type === 'comment' ? '留言' : '貼文';
+    const reason = prompt('請輸入檢舉原因：');
+    if (reason === null) return;
+    if (reason.trim() === '') { 
+        alert('請輸入檢舉原因'); 
+        return; 
+    }
+
+    const reports = JSON.parse(localStorage.getItem('forumReports') || '[]');
+    reports.unshift({
+        type, 
+        typeLabel, 
+        id, 
+        title,
+        reason: reason.trim(),
+        reporterRole: <?= json_encode($current_role) ?>,
+        createdAt: new Date().toLocaleString('zh-TW')
+    });
+
+    localStorage.setItem('forumReports', JSON.stringify(reports));
+    showToast('已送出檢舉（前端暫存）');
+    renderForumReports();
+}
+
+function renderForumReports() {
+    const list = document.getElementById('report-admin-list');
+    if (!list) return;
+
+    const reports = JSON.parse(localStorage.getItem('forumReports') || '[]');
+
+    if (reports.length === 0) {
+        list.className = 'report-admin-empty';
+        list.innerHTML = '目前沒有檢舉紀錄';
+        return;
+    }
+
+    list.className = '';
+    list.innerHTML = reports.map(r => `
+        <div class="report-admin-item">
+            <strong>${escapeHtml(r.typeLabel || r.type)} #${escapeHtml(r.id)}</strong><br>
+            ${escapeHtml(r.title || '未命名內容')}<br>
+            檢舉原因：${escapeHtml(r.reason || '')}
+            <div class="report-admin-meta">${escapeHtml(r.createdAt || '')}</div>
+        </div>
+    `).join('');
+}
+
+function clearForumReports() {
+    if (!confirm('確定要清空目前瀏覽器暫存的檢舉紀錄嗎？')) return;
+
+    localStorage.removeItem('forumReports');
+    renderForumReports();
+    showToast('已清空前端檢舉紀錄');
+}
+
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+document.addEventListener('DOMContentLoaded', renderForumReports);
 
 function showToast(msg) {
     const t = document.getElementById("favorite-toast");

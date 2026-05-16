@@ -8,6 +8,9 @@ $post_id = isset($_GET["id"]) ? (int)$_GET["id"] : 0;
 $error   = "";
 $success = "";
 
+$current_role = (int)($_SESSION['role'] ?? 0);
+$can_report = !empty($_SESSION['user_id']) && in_array($current_role, [2, 3], true); // 社團或學生可檢舉
+
 try {
     $pdo = new PDO(
         "mysql:host=$host;dbname=$dbname;charset=utf8mb4",
@@ -36,15 +39,20 @@ try {
     // 處理新留言送出（需登入）
     if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_SESSION["user_id"])) {
         $content = trim($_POST["content"] ?? "");
+
         if ($content === "") {
             $error = "留言內容不可為空。";
         } else {
-            $stmt = $pdo->prepare("INSERT INTO forum_comments (post_id, user_id, content) VALUES (:pid, :uid, :content)");
+            $stmt = $pdo->prepare("
+                INSERT INTO forum_comments (post_id, user_id, content) 
+                VALUES (:pid, :uid, :content)
+            ");
             $stmt->execute([
                 ":pid"     => $post_id,
                 ":uid"     => $_SESSION["user_id"],
                 ":content" => $content,
             ]);
+
             header("Location: forum_post.php?id=" . $post_id . "#comments");
             exit;
         }
@@ -70,9 +78,19 @@ $post_author = $post["nickname"] ?: $post["username"];
 function time_ago($datetime) {
     $diff = time() - strtotime($datetime);
     if ($diff < 0) $diff = 0;
-    if ($diff < 60)    return "剛剛";
-    if ($diff < 3600)  return floor($diff / 60) . " 分鐘前";
-    if ($diff < 86400) return floor($diff / 3600) . " 小時前";
+
+    if ($diff < 60) {
+        return "剛剛";
+    }
+
+    if ($diff < 3600) {
+        return floor($diff / 60) . " 分鐘前";
+    }
+
+    if ($diff < 86400) {
+        return floor($diff / 3600) . " 小時前";
+    }
+
     return date("Y/m/d H:i", strtotime($datetime));
 }
 
@@ -99,7 +117,9 @@ require_once "header.php";
       --input-border: #c8d0dc;
     }
 
-    * { box-sizing: border-box; }
+    * { 
+      box-sizing: border-box; 
+    }
 
     body {
       font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif;
@@ -133,7 +153,9 @@ require_once "header.php";
       font-weight: 600;
     }
 
-    .breadcrumb-bar a:hover { text-decoration: underline; }
+    .breadcrumb-bar a:hover { 
+      text-decoration: underline; 
+    }
 
     /* ── Post card ── */
     .post-card {
@@ -338,6 +360,73 @@ require_once "header.php";
       text-decoration: none;
     }
 
+    /* ── 檢舉按鈕（前端暫存） ── */
+    .post-top-row { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: flex-start; 
+      gap: 16px; 
+    }
+
+    .forum-report-btn { 
+      flex-shrink: 0; 
+      border: 1px solid #f1d4d4; 
+      background: #fff7f7; 
+      color: #b45353; 
+      border-radius: 999px; 
+      padding: 7px 14px; 
+      font-size: 13px; 
+      cursor: pointer; 
+      transition: 0.2s ease; 
+      white-space: nowrap; 
+    }
+
+    .forum-report-btn:hover { 
+      border-color: #b91c1c; 
+      background: #fee2e2; 
+      color: #991b1b; 
+    }
+
+    .comment-top-row { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: flex-start; 
+      gap: 12px; 
+    }
+
+    .comment-report-btn { 
+      border: 1px solid #f1d4d4; 
+      background: #fff7f7; 
+      color: #b45353; 
+      border-radius: 999px; 
+      padding: 4px 10px; 
+      font-size: 12px; 
+      cursor: pointer; 
+      white-space: nowrap; 
+    }
+
+    .comment-report-btn:hover { 
+      background: #fee2e2; 
+      color: #991b1b; 
+    }
+
+    #report-toast { 
+      position: fixed; 
+      bottom: 1.5rem; 
+      right: 1.5rem; 
+      z-index: 9999; 
+      background: #1a1a2e; 
+      color: #fff; 
+      padding: .55rem 1.1rem; 
+      border-radius: 8px; 
+      font-size: .8rem; 
+      font-weight: 500; 
+      box-shadow: 0 4px 16px rgba(0,0,0,.2); 
+      transition: opacity .3s; 
+      opacity: 0; 
+      pointer-events: none; 
+    }
+
     /* ── Footer ── */
     footer {
       background-color: var(--footer-bg);
@@ -348,8 +437,13 @@ require_once "header.php";
     }
 
     @media (max-width: 600px) {
-      .post-card { padding: 24px 20px; }
-      .comment-form-card { padding: 20px; }
+      .post-card { 
+        padding: 24px 20px; 
+      }
+
+      .comment-form-card { 
+        padding: 20px; 
+      }
     }
   </style>
 </head>
@@ -361,26 +455,60 @@ require_once "header.php";
   <div class="breadcrumb-bar">
     <a href="forum.php"><i class="bi bi-journals me-1"></i>社團論壇</a>
     <i class="bi bi-chevron-right" style="font-size:11px;"></i>
-    <a href="forum.php?cat=<?= $post["category_id"] ?>"><?= htmlspecialchars($post["category_name"]) ?></a>
+    <a href="forum.php?cat=<?= $post["category_id"] ?>">
+      <?= htmlspecialchars($post["category_name"]) ?>
+    </a>
     <i class="bi bi-chevron-right" style="font-size:11px;"></i>
-    <span style="color:#667;"><?= mb_strimwidth(htmlspecialchars($post["title"]), 0, 30, "...") ?></span>
+    <span style="color:#667;">
+      <?= mb_strimwidth(htmlspecialchars($post["title"]), 0, 30, "...") ?>
+    </span>
   </div>
 
   <!-- 文章主體 -->
   <div class="post-card">
-    <span class="post-category-badge"><?= htmlspecialchars($post["category_name"]) ?></span>
-    <div class="post-title"><?= htmlspecialchars($post["title"]) ?></div>
+    <div class="post-top-row">
+      <div>
+        <span class="post-category-badge">
+          <?= htmlspecialchars($post["category_name"]) ?>
+        </span>
+        <div class="post-title">
+          <?= htmlspecialchars($post["title"]) ?>
+        </div>
+      </div>
+
+      <?php if ($can_report): ?>
+        <button
+          type="button"
+          class="forum-report-btn"
+          onclick="reportForumItem('post', '<?= htmlspecialchars($post_id) ?>', '<?= htmlspecialchars($post["title"], ENT_QUOTES) ?>')"
+        >
+          <i class="bi bi-flag"></i> 檢舉貼文
+        </button>
+      <?php endif; ?>
+    </div>
 
     <div class="post-meta">
       <span class="meta-author">
-        <div class="author-avatar"><?= mb_substr($post_author, 0, 1) ?></div>
+        <div class="author-avatar">
+          <?= mb_substr($post_author, 0, 1) ?>
+        </div>
         <?= htmlspecialchars($post_author) ?>
       </span>
-      <span><i class="bi bi-clock me-1"></i><?= time_ago($post["created_at"]) ?></span>
-      <span><i class="bi bi-chat-dots me-1"></i><?= count($comments) ?> 則留言</span>
+
+      <span>
+        <i class="bi bi-clock me-1"></i>
+        <?= time_ago($post["created_at"]) ?>
+      </span>
+
+      <span>
+        <i class="bi bi-chat-dots me-1"></i>
+        <?= count($comments) ?> 則留言
+      </span>
     </div>
 
-    <div class="post-content"><?= htmlspecialchars($post["content"]) ?></div>
+    <div class="post-content">
+      <?= htmlspecialchars($post["content"]) ?>
+    </div>
   </div>
 
   <!-- 留言區 -->
@@ -398,26 +526,53 @@ require_once "header.php";
         還沒有留言，來發表第一則吧！
       </div>
     <?php else: ?>
-      <?php foreach ($comments as $i => $comment):
-        $c_author = $comment["nickname"] ?: $comment["username"];
-      ?>
+
+      <?php foreach ($comments as $i => $comment): ?>
+        <?php
+          $c_author = $comment["nickname"] ?: $comment["username"];
+        ?>
+
         <div class="comment-card">
-          <div class="comment-meta">
-            <div class="author-avatar" style="width:28px;height:28px;font-size:11px;">
-              <?= mb_substr($c_author, 0, 1) ?>
+          <div class="comment-top-row">
+            <div class="comment-meta">
+              <div class="author-avatar" style="width:28px;height:28px;font-size:11px;">
+                <?= mb_substr($c_author, 0, 1) ?>
+              </div>
+
+              <span class="comment-author">
+                <?= htmlspecialchars($c_author) ?>
+              </span>
+
+              <span class="comment-time">
+                <?= time_ago($comment["created_at"]) ?>
+              </span>
             </div>
-            <span class="comment-author"><?= htmlspecialchars($c_author) ?></span>
-            <span class="comment-time"><?= time_ago($comment["created_at"]) ?></span>
+
+            <?php if ($can_report): ?>
+              <button
+                type="button"
+                class="comment-report-btn"
+                onclick="reportForumItem('comment', '<?= htmlspecialchars($comment["id"]) ?>', '<?= htmlspecialchars(mb_strimwidth($comment["content"], 0, 36, "..."), ENT_QUOTES) ?>')"
+              >
+                <i class="bi bi-flag"></i> 檢舉留言
+              </button>
+            <?php endif; ?>
           </div>
-          <div class="comment-content"><?= htmlspecialchars($comment["content"]) ?></div>
+
+          <div class="comment-content">
+            <?= htmlspecialchars($comment["content"]) ?>
+          </div>
         </div>
       <?php endforeach; ?>
+
     <?php endif; ?>
 
     <!-- 留言表單 -->
     <?php if (!empty($_SESSION["user_id"])): ?>
       <div class="comment-form-card">
-        <div class="comment-form-title"><i class="bi bi-pencil me-2"></i>發表留言</div>
+        <div class="comment-form-title">
+          <i class="bi bi-pencil me-2"></i>發表留言
+        </div>
 
         <?php if ($error): ?>
           <div class="alert-error">
@@ -434,6 +589,7 @@ require_once "header.php";
             placeholder="輸入您的留言..."
             required
           ></textarea>
+
           <button type="submit" class="btn-submit">
             <i class="bi bi-send me-2"></i>送出留言
           </button>
@@ -448,6 +604,50 @@ require_once "header.php";
   </div>
 
 </div>
+
+<div id="report-toast"></div>
+
+<script>
+function reportForumItem(type, id, title) {
+  const reason = prompt('請輸入檢舉原因：');
+
+  if (reason === null) return;
+
+  if (reason.trim() === '') { 
+    alert('請輸入檢舉原因'); 
+    return; 
+  }
+
+  const reports = JSON.parse(localStorage.getItem('forumReports') || '[]');
+
+  reports.unshift({
+    type,
+    typeLabel: type === 'comment' ? '留言' : '貼文',
+    id, 
+    title,
+    reason: reason.trim(),
+    reporterRole: <?= json_encode($current_role) ?>,
+    postId: <?= json_encode($post_id) ?>,
+    createdAt: new Date().toLocaleString('zh-TW')
+  });
+
+  localStorage.setItem('forumReports', JSON.stringify(reports));
+  showReportToast('已送出檢舉');
+}
+
+function showReportToast(msg) {
+  const t = document.getElementById('report-toast');
+  if (!t) return;
+
+  t.textContent = msg;
+  t.style.opacity = '1';
+
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { 
+    t.style.opacity = '0'; 
+  }, 1800);
+}
+</script>
 
 <?php require "footer.php"; ?>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
