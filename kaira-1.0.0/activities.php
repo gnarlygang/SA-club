@@ -49,7 +49,16 @@ if (isset($pdo)) {
     if ($filter_fee==='free') { $sql .= " AND (a.fee='免費' OR a.fee LIKE '%免費%' OR a.fee='0')"; }
     elseif ($filter_fee==='paid') { $sql .= " AND (a.fee!='免費' AND a.fee NOT LIKE '%免費%' AND a.fee!='0')"; }
     if ($search!=='') { $sql .= " AND (a.title LIKE :s1 OR a.description LIKE :s2)"; $params[':s1']="%$search%"; $params[':s2']="%$search%"; }
-    $sql .= " ORDER BY a.$sort_by DESC";
+
+    // 排序邏輯：
+    // created_at  → 最新發佈排前面 DESC
+    // event_start → 最近即將舉辦排前面 ASC（未來活動優先）
+    // signup_deadline → 最快截止排前面 ASC
+    if ($sort_by === 'event_start' || $sort_by === 'signup_deadline') {
+        $sql .= " ORDER BY a.$sort_by ASC";
+    } else {
+        $sql .= " ORDER BY a.$sort_by DESC";
+    }
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
@@ -69,13 +78,9 @@ function qsMerge(array $o, array $ex=[]): string {
     return http_build_query($m);
 }
 
-// ── 三分法 ──────────────────────────────────────────────────
-// 1. 進行中（報名未截止）
-// 2. 報名截止（報名結束，但活動尚未結束或無結束時間）
-// 3. 活動已結束（event_end 已過）
-$active_acts  = [];
+$active_acts   = [];
 $deadline_acts = [];
-$ended_acts   = [];
+$ended_acts    = [];
 
 foreach ($activities as $act) {
     $deadlinePassed = isDeadlinePassed($act['signup_deadline'] ?? '');
@@ -107,7 +112,6 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     display: grid; grid-template-columns: 240px 1fr; gap: 1.5rem; align-items: start;
 }
 
-/* ── Sidebar ── */
 .sidebar {
     background: var(--white); border: 1px solid var(--border);
     border-radius: var(--radius); overflow: hidden;
@@ -131,6 +135,7 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
 .sb-sort-btn { display:block; width:100%; text-align:left; padding:.35rem .5rem; font-size:.8rem; color:var(--soft); background:none; border:none; border-radius:6px; cursor:pointer; text-decoration:none; transition:background .15s; }
 .sb-sort-btn:hover { background:var(--paper); color:var(--ink); }
 .sb-sort-btn.active { color:var(--accent); font-weight:600; background:#f0ebe8; }
+.sb-sort-hint { font-size:.68rem; color:var(--mute); padding:0 .5rem .3rem; line-height:1.4; }
 .sb-toggle-row { display:flex; align-items:center; justify-content:space-between; padding:.6rem 1rem; font-size:.8rem; color:var(--soft); }
 .toggle-switch { position:relative; width:32px; height:18px; flex-shrink:0; }
 .toggle-switch input { opacity:0; width:0; height:0; }
@@ -141,7 +146,6 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
 .sb-clear { display:block; text-align:center; padding:.55rem; font-size:.75rem; color:var(--mute); text-decoration:none; transition:color .15s; }
 .sb-clear:hover { color:var(--accent); }
 
-/* ── Content ── */
 .content-wrap { min-width:0; }
 .top-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; flex-wrap:wrap; gap:.5rem; }
 .top-bar-title { font-family:var(--serif); font-size:1.2rem; font-weight:700; color:var(--ink); }
@@ -152,7 +156,6 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
 .chip { display:inline-flex; align-items:center; gap:.3rem; padding:.2rem .65rem; background:#f0ebe8; color:var(--accent); border-radius:99px; font-size:.7rem; font-weight:500; }
 .chip a { color:var(--accent); text-decoration:none; font-weight:700; }
 
-/* ── Cards ── */
 .act-list { display:grid; gap:.85rem; }
 .act-card { background:var(--white); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; display:grid; grid-template-rows:1fr auto; transition:transform .2s,box-shadow .2s; animation:fadeUp .3s ease both; box-shadow:0 1px 6px rgba(0,0,0,.05); }
 .act-card:hover { transform:translateY(-2px); box-shadow:0 5px 20px rgba(0,0,0,.09); }
@@ -196,35 +199,19 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
 .bookmark-btn svg { width:13px; height:13px; }
 .bookmark-btn:disabled { opacity:.3; cursor:not-allowed; pointer-events:none; }
 
-/* ── 分隔區塊標題 ── */
-.section-divider {
-    display: flex; align-items: center; gap: .75rem;
-    margin: 1.5rem 0 .85rem;
-}
-.section-divider-label {
-    display: flex; align-items: center; gap: .4rem;
-    font-size: .72rem; font-weight: 700; letter-spacing: .08em;
-    text-transform: uppercase; white-space: nowrap; padding: .25rem .75rem;
-    border-radius: 99px;
-}
-.section-divider-label.deadline { background: #f0f0f0; color: #888; }
-.section-divider-label.ended    { background: #e8e8f0; color: #5555aa; }
+.section-divider { display:flex; align-items:center; gap:.75rem; margin:1.5rem 0 .85rem; }
+.section-divider-label { display:flex; align-items:center; gap:.4rem; font-size:.72rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; white-space:nowrap; padding:.25rem .75rem; border-radius:99px; }
+.section-divider-label.deadline { background:#f0f0f0; color:#888; }
+.section-divider-label.ended    { background:#e8e8f0; color:#5555aa; }
 .section-divider::after { content:''; flex:1; height:1px; background:var(--border); }
 
-/* 折疊 */
-.collapse-toggle {
-    display: flex; align-items: center; gap: .5rem; width: 100%;
-    background: none; border: 1px dashed var(--border);
-    border-radius: var(--radius); padding: .6rem 1rem;
-    font-size: .8rem; color: var(--mute); cursor: pointer; transition: all .18s; text-align: left;
-}
-.collapse-toggle:hover { border-color: var(--accent); color: var(--accent); background: #fff8f6; }
+.collapse-toggle { display:flex; align-items:center; gap:.5rem; width:100%; background:none; border:1px dashed var(--border); border-radius:var(--radius); padding:.6rem 1rem; font-size:.8rem; color:var(--mute); cursor:pointer; transition:all .18s; text-align:left; }
+.collapse-toggle:hover { border-color:var(--accent); color:var(--accent); background:#fff8f6; }
 .collapse-toggle svg { width:14px; height:14px; flex-shrink:0; transition:transform .2s; }
-.collapse-toggle.open svg { transform: rotate(180deg); }
+.collapse-toggle.open svg { transform:rotate(180deg); }
 .collapse-body { display:grid; gap:.85rem; margin-top:.85rem; }
 .collapse-body[hidden] { display:none; }
 
-/* ── Empty ── */
 .act-empty { text-align:center; padding:3.5rem 1rem; color:var(--mute); }
 .act-empty svg { width:44px; height:44px; margin-bottom:.85rem; }
 .act-empty h3 { font-family:var(--serif); font-size:1.05rem; color:var(--soft); margin-bottom:.35rem; }
@@ -308,10 +295,29 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     <div class="sidebar-section">
         <div class="sidebar-heading">排序方式</div>
         <div class="sb-sort-group">
-            <?php foreach (['created_at'=>'依發佈時間（新→舊）','event_start'=>'依活動時間','signup_deadline'=>'依報名截止'] as $val=>$label): ?>
-            <a href="activities.php?<?= qsMerge(['sort_by'=>$val]) ?>"
-               class="sb-sort-btn <?= $sort_by===$val?'active':'' ?>"><?= $label ?></a>
-            <?php endforeach; ?>
+            <a href="activities.php?<?= qsMerge(['sort_by'=>'created_at']) ?>"
+               class="sb-sort-btn <?= $sort_by==='created_at'?'active':'' ?>">
+                最新發佈
+            </a>
+            <?php if ($sort_by==='created_at'): ?>
+            <div class="sb-sort-hint">↓ 最新發佈的排最前面</div>
+            <?php endif; ?>
+
+            <a href="activities.php?<?= qsMerge(['sort_by'=>'event_start']) ?>"
+               class="sb-sort-btn <?= $sort_by==='event_start'?'active':'' ?>">
+                活動時間（近→遠）
+            </a>
+            <?php if ($sort_by==='event_start'): ?>
+            <div class="sb-sort-hint">↓ 最快舉辦的活動排最前面</div>
+            <?php endif; ?>
+
+            <a href="activities.php?<?= qsMerge(['sort_by'=>'signup_deadline']) ?>"
+               class="sb-sort-btn <?= $sort_by==='signup_deadline'?'active':'' ?>">
+                報名截止（近→遠）
+            </a>
+            <?php if ($sort_by==='signup_deadline'): ?>
+            <div class="sb-sort-hint">↓ 最快截止報名的排最前面</div>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -346,7 +352,6 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     <?php endif; ?>
 
     <?php
-    // ── 共用卡片渲染函式 ──
     function renderCard(array $act, bool $dimmed, string $btnLabel, bool $btnDisabled): void {
         $free  = isFree($act['fee']??'');
         $soon  = !$dimmed && isDeadlineSoon($act['signup_deadline']??'');
@@ -392,7 +397,7 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     }
     ?>
 
-    <!-- ─── 1. 進行中 ─── -->
+    <!-- 進行中 -->
     <?php if (empty($active_acts)&&empty($deadline_acts)&&empty($ended_acts)): ?>
     <div class="act-empty">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
@@ -411,7 +416,7 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     </div>
     <?php endif; ?>
 
-    <!-- ─── 2. 報名截止（活動尚在進行或無結束時間）─── -->
+    <!-- 報名截止 -->
     <?php if (!empty($deadline_acts)): ?>
     <div class="section-divider">
         <span class="section-divider-label deadline">
@@ -428,7 +433,7 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); ma
     </div>
     <?php endif; ?>
 
-    <!-- ─── 3. 活動已結束（event_end 已過）─── -->
+    <!-- 活動已結束 -->
     <?php if (!empty($ended_acts)): ?>
     <div class="section-divider">
         <span class="section-divider-label ended">
