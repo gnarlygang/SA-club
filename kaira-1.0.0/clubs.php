@@ -2,12 +2,7 @@
 session_start();
 require_once "api/db.php";
 
-try {
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch (PDOException $e) {
-    $pdo = null;
-}
+// 不要重複 new PDO，api/db.php 已經建好 $pdo 了
 
 $categories = ['學術性社團','休閒聯誼性社團','服務性社團','體能性社團','藝術性社團','音樂性社團'];
 $cat    = $_GET['cat']    ?? '';
@@ -20,33 +15,24 @@ if ($pdo) {
     $params = [];
 
     if ($search !== '') {
-        $chars = [];
-        $len = mb_strlen($search, 'UTF-8');
-        for ($i = 0; $i < $len; $i++) {
-            $char = mb_substr($search, $i, 1, 'UTF-8');
-            if (trim($char) !== '') $chars[] = $char;
-        }
-
-        $char_conditions = [];
-        foreach ($chars as $idx => $char) {
-            $likeChar = "%$char%";
-            $char_conditions[] = "c.id IN (
-                SELECT id FROM clubs WHERE name LIKE :cn{$idx}
-                UNION SELECT id FROM clubs WHERE category LIKE :cc{$idx}
-                UNION SELECT id FROM clubs WHERE description LIKE :cd{$idx}
-                UNION SELECT club_id FROM club_tags WHERE tag_name LIKE :ct{$idx}
-            )";
-            $params[":cn{$idx}"] = $likeChar;
-            $params[":cc{$idx}"] = $likeChar;
-            $params[":cd{$idx}"] = $likeChar;
-            $params[":ct{$idx}"] = $likeChar;
-        }
-
+        $like = "%$search%";
         $sql = "
             SELECT c.*, GROUP_CONCAT(ct.tag_name ORDER BY ct.id SEPARATOR ',') AS tags
             FROM clubs c
             LEFT JOIN club_tags ct ON ct.club_id = c.id
-            WHERE " . implode(' AND ', $char_conditions);
+            WHERE (
+                c.name LIKE :s1
+                OR c.short_name LIKE :s2
+                OR c.description LIKE :s3
+                OR c.keywords LIKE :s4
+                OR ct.tag_name LIKE :s5
+            )
+        ";
+        $params[':s1'] = $like;
+        $params[':s2'] = $like;
+        $params[':s3'] = $like;
+        $params[':s4'] = $like;
+        $params[':s5'] = $like;
 
         if ($cat && in_array($cat, $categories)) {
             $sql .= " AND c.category = :cat";
@@ -79,7 +65,6 @@ if ($pdo) {
     $stmt->execute($params);
     $clubs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // 取得已訂閱清單
     if (!empty($_SESSION['user_id'])) {
         $stmt2 = $pdo->prepare("SELECT club_id FROM subscriptions WHERE user_id = ?");
         $stmt2->execute([$_SESSION['user_id']]);
@@ -183,14 +168,12 @@ body { font-family: "Microsoft JhengHei", sans-serif; background: #f8f9fa; }
 }
 .view-more { font-size:.75rem; color:#c8502a; font-weight:500; }
 
-/* ── 訂閱按鈕 ── */
 .sub-btn {
     display: inline-flex; align-items: center; gap: .3rem;
     font-size: .72rem; font-weight: 600;
     padding: .28rem .7rem; border-radius: 99px;
     border: 1.5px solid #1a1a2e; background: transparent; color: #1a1a2e;
-    cursor: pointer; transition: all .18s;
-    white-space: nowrap;
+    cursor: pointer; transition: all .18s; white-space: nowrap;
     position: relative; z-index: 2;
 }
 .sub-btn:hover        { background: #1a1a2e; color: #fff; }
@@ -200,7 +183,6 @@ body { font-family: "Microsoft JhengHei", sans-serif; background: #f8f9fa; }
 .empty-state { text-align:center; padding:4rem 1rem; color:#aaa; grid-column:1/-1; }
 .empty-state i { font-size:3rem; margin-bottom:1rem; display:block; }
 
-/* ── Toast ── */
 #sub-toast {
     position:fixed; bottom:1.5rem; right:1.5rem; z-index:9999;
     background:#1a1a2e; color:#fff; padding:.55rem 1.1rem;
@@ -217,13 +199,11 @@ body { font-family: "Microsoft JhengHei", sans-serif; background: #f8f9fa; }
 }
 </style>
 
-<!-- Hero -->
 <div class="clubs-hero">
     <h1>社團介紹</h1>
     <p>探索輔仁大學各類型社團，找到屬於你的舞台</p>
 </div>
 
-<!-- Category Tabs + 搜尋 -->
 <div class="cat-tabs-wrap">
     <div class="cat-tabs">
         <div class="cat-tabs-left">
@@ -243,7 +223,7 @@ body { font-family: "Microsoft JhengHei", sans-serif; background: #f8f9fa; }
             <div class="club-search-box">
                 <i class="bi bi-search"></i>
                 <input type="text" name="search"
-                       placeholder="輸入社團名稱、分類或關鍵字…"
+                       placeholder="輸入社團名稱、簡稱或關鍵字…"
                        value="<?= htmlspecialchars($search) ?>">
                 <button type="submit"><i class="bi bi-arrow-right-short" style="font-size:1.1rem"></i></button>
             </div>
@@ -251,7 +231,6 @@ body { font-family: "Microsoft JhengHei", sans-serif; background: #f8f9fa; }
     </div>
 </div>
 
-<!-- Count -->
 <div class="count-info">
     <?php if ($search !== ''): ?>
         搜尋「<strong><?= htmlspecialchars($search) ?></strong>」，共找到 <strong><?= count($clubs) ?></strong> 個社團
@@ -263,7 +242,6 @@ body { font-family: "Microsoft JhengHei", sans-serif; background: #f8f9fa; }
     <?php endif; ?>
 </div>
 
-<!-- Cards -->
 <div class="clubs-grid">
     <?php if (empty($clubs)): ?>
     <div class="empty-state">
@@ -303,10 +281,9 @@ body { font-family: "Microsoft JhengHei", sans-serif; background: #f8f9fa; }
             <span><?= htmlspecialchars($club['category']) ?></span>
             <div style="display:flex; align-items:center; gap:.6rem;">
                 <?php if (!empty($_SESSION['user_id'])): ?>
-                <button
-                    class="sub-btn <?= $isSub ? 'subscribed' : '' ?>"
-                    data-club-id="<?= $club['id'] ?>"
-                    onclick="toggleSub(event, this)">
+                <button class="sub-btn <?= $isSub ? 'subscribed' : '' ?>"
+                        data-club-id="<?= $club['id'] ?>"
+                        onclick="toggleSub(event, this)">
                     <i class="bi <?= $isSub ? 'bi-bell-fill' : 'bi-bell' ?>"></i>
                     <?= $isSub ? '已訂閱' : '訂閱' ?>
                 </button>
@@ -325,15 +302,11 @@ body { font-family: "Microsoft JhengHei", sans-serif; background: #f8f9fa; }
 
 <script>
 function toggleSub(e, btn) {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const clubId = btn.dataset.clubId;
-
+    e.preventDefault(); e.stopPropagation();
     fetch("api/toggle_subscription.php", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: "club_id=" + encodeURIComponent(clubId)
+        body: "club_id=" + encodeURIComponent(btn.dataset.clubId)
     })
     .then(r => r.json())
     .then(data => {
@@ -352,8 +325,7 @@ function toggleSub(e, btn) {
 
 function showToast(msg) {
     const t = document.getElementById("sub-toast");
-    t.textContent = msg;
-    t.style.opacity = "1";
+    t.textContent = msg; t.style.opacity = "1";
     clearTimeout(t._t);
     t._t = setTimeout(() => { t.style.opacity = "0"; }, 2200);
 }
