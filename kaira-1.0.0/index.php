@@ -646,6 +646,16 @@ footer {
   .activities-row { grid-template-columns: 1fr; }
   .footer-top { grid-template-columns: 1fr; }
   .footer-bottom { flex-direction: column; align-items: flex-start; }
+  
+}
+
+.sidebar-card-header .see-all {
+  color: #ffffff !important;
+}
+
+.sidebar-card-header .see-all:hover {
+  color: #ffffff !important;
+  opacity: 0.8;
 }
 </style>
 </head>
@@ -799,10 +809,10 @@ footer {
   <div class="sidebar">
 
     <!-- Announcements -->
-<div class="sidebar-card">
-  <div class="sidebar-card-header">
-    <h3>系統公告</h3>
-  </div>
+<div class="sidebar-card-header">
+  <h3>系統公告</h3>
+  <a href="ann_list.php" class="see-all ">查看全部 →</a>
+</div>
 
   <div class="sidebar-card-body">
     <?php if (!empty($announcements)): ?>
