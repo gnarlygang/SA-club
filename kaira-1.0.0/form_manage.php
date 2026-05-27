@@ -9,7 +9,6 @@ require_once "api/db.php";
 function h($v) { return htmlspecialchars((string)($v ?? ''), ENT_QUOTES, 'UTF-8'); }
 
 // ── 權限：僅 role=2（社團帳號）可用 ────────────────────────────
-// 改後
 if (empty($_SESSION['role']) || $_SESSION['role'] != 2) {
     header('Location: login.php'); exit;
 }
@@ -28,7 +27,7 @@ $myActivities = $myActivities->fetchAll(PDO::FETCH_ASSOC);
 
 // ── 處理新增 / 編輯 表單 ────────────────────────────────────────
 $msg = '';
-$editForm = null;
+$editForm   = null;
 $editFields = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -36,14 +35,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // 建立或更新表單
     if ($action === 'save_form') {
-        $actId      = (int)($_POST['activity_id'] ?? 0);
-        $title      = trim($_POST['title'] ?? '');
-        $desc       = trim($_POST['description'] ?? '');
-        $quota      = ($_POST['quota'] !== '') ? (int)$_POST['quota'] : null;
-        $closeAt    = (!empty($_POST['close_at'])) ? $_POST['close_at'] : null;
-        $needReview = isset($_POST['need_review']) ? 1 : 0;
-        $status     = $_POST['status'] ?? 'open';
-        $formId     = (int)($_POST['form_id'] ?? 0);
+        $actId         = (int)($_POST['activity_id'] ?? 0);
+        $title         = trim($_POST['title'] ?? '');
+        $desc          = trim($_POST['description'] ?? '');
+        $quota         = ($_POST['quota'] !== '') ? (int)$_POST['quota'] : null;
+        $closeAt       = (!empty($_POST['close_at'])) ? $_POST['close_at'] : null;
+        $needReview    = isset($_POST['need_review']) ? 1 : 0;
+        $status        = $_POST['status'] ?? 'open';
+        $formId        = (int)($_POST['form_id'] ?? 0);
+        $formMode      = $_POST['form_mode'] ?? 'custom';   // custom | google
+        $googleFormUrl = trim($_POST['google_form_url'] ?? '');
 
         // 驗證活動屬於本社團
         $chk = $pdo->prepare("SELECT id FROM activities WHERE id=? AND user_id=?");
@@ -52,48 +53,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $msg = 'error:活動不存在或無權限';
         } elseif (empty($title)) {
             $msg = 'error:請填寫表單標題';
+        } elseif ($formMode === 'google' && empty($googleFormUrl)) {
+            $msg = 'error:請填寫 Google 表單連結';
+        } elseif ($formMode === 'google' && !filter_var($googleFormUrl, FILTER_VALIDATE_URL)) {
+            $msg = 'error:Google 表單連結格式不正確';
         } else {
+            // google 模式不需要自訂欄位
+            $saveGoogleUrl = ($formMode === 'google') ? $googleFormUrl : null;
+
             if ($formId) {
-                // update
                 $upd = $pdo->prepare("
-                    UPDATE forms SET activity_id=?,title=?,description=?,quota=?,
-                    close_at=?,need_review=?,status=? WHERE id=? AND creator_id=?
+                    UPDATE forms
+                    SET activity_id=?, title=?, description=?, quota=?,
+                        close_at=?, need_review=?, status=?, google_form_url=?
+                    WHERE id=? AND creator_id=?
                 ");
-                $upd->execute([$actId,$title,$desc,$quota,$closeAt,$needReview,$status,$formId,$me['user_id']]);
+                $upd->execute([$actId, $title, $desc, $quota, $closeAt,
+                               $needReview, $status, $saveGoogleUrl,
+                               $formId, $me['user_id']]);
             } else {
-                // insert
-                $ins = $pdo->prepare("
-                    INSERT INTO forms (activity_id,club_id,creator_id,title,description,quota,close_at,need_review,status)
-                    VALUES (?,?,?,?,?,?,?,?,?)
-                ");
-                // club_id: 從 clubs 找
                 $clubRow = $pdo->prepare("SELECT id FROM clubs WHERE user_id=? LIMIT 1");
                 $clubRow->execute([$me['user_id']]);
                 $clubRow = $clubRow->fetch(PDO::FETCH_ASSOC);
                 $clubId  = $clubRow ? $clubRow['id'] : 0;
-                $ins->execute([$actId,$clubId,$me['user_id'],$title,$desc,$quota,$closeAt,$needReview,$status]);
+
+                $ins = $pdo->prepare("
+                    INSERT INTO forms
+                        (activity_id, club_id, creator_id, title, description,
+                         quota, close_at, need_review, status, google_form_url)
+                    VALUES (?,?,?,?,?,?,?,?,?,?)
+                ");
+                $ins->execute([$actId, $clubId, $me['user_id'], $title, $desc,
+                               $quota, $closeAt, $needReview, $status, $saveGoogleUrl]);
                 $formId = $pdo->lastInsertId();
             }
 
-            // 儲存自訂欄位
+            // 自訂欄位（google 模式就清空）
             $pdo->prepare("DELETE FROM form_fields WHERE form_id=?")->execute([$formId]);
-            $labels    = $_POST['field_label']    ?? [];
-            $types     = $_POST['field_type']     ?? [];
-            $opts      = $_POST['field_options']  ?? [];
-            $reqs      = $_POST['field_required'] ?? [];
-            foreach ($labels as $i => $lbl) {
-                $lbl = trim($lbl);
-                if ($lbl === '') continue;
-                $pdo->prepare("
-                    INSERT INTO form_fields (form_id,label,field_type,options,is_required,sort_order)
-                    VALUES (?,?,?,?,?,?)
-                ")->execute([
-                    $formId, $lbl,
-                    $types[$i] ?? 'text',
-                    trim($opts[$i] ?? ''),
-                    isset($reqs[$i]) ? 1 : 0,
-                    $i
-                ]);
+            if ($formMode === 'custom') {
+                $labels = $_POST['field_label']    ?? [];
+                $types  = $_POST['field_type']     ?? [];
+                $opts   = $_POST['field_options']  ?? [];
+                $reqs   = $_POST['field_required'] ?? [];
+                foreach ($labels as $i => $lbl) {
+                    $lbl = trim($lbl);
+                    if ($lbl === '') continue;
+                    $pdo->prepare("
+                        INSERT INTO form_fields
+                            (form_id, label, field_type, options, is_required, sort_order)
+                        VALUES (?,?,?,?,?,?)
+                    ")->execute([
+                        $formId, $lbl,
+                        $types[$i] ?? 'text',
+                        trim($opts[$i] ?? ''),
+                        isset($reqs[$i]) ? 1 : 0,
+                        $i
+                    ]);
+                }
             }
             $msg = 'ok:表單已儲存！';
         }
@@ -101,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // 切換表單狀態
     if ($action === 'toggle_status') {
-        $formId = (int)($_POST['form_id'] ?? 0);
+        $formId   = (int)($_POST['form_id'] ?? 0);
         $toStatus = $_POST['to_status'] ?? 'closed';
         $pdo->prepare("UPDATE forms SET status=? WHERE id=? AND creator_id=?")
             ->execute([$toStatus, $formId, $me['user_id']]);
@@ -111,7 +127,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // 載入要編輯的表單
 if (isset($_GET['edit'])) {
-    $editId = (int)$_GET['edit'];
+    $editId   = (int)$_GET['edit'];
     $editForm = $pdo->prepare("SELECT * FROM forms WHERE id=? AND creator_id=?");
     $editForm->execute([$editId, $me['user_id']]);
     $editForm = $editForm->fetch(PDO::FETCH_ASSOC);
@@ -120,6 +136,12 @@ if (isset($_GET['edit'])) {
         $ef->execute([$editId]);
         $editFields = $ef->fetchAll(PDO::FETCH_ASSOC);
     }
+}
+
+// 決定預設頁籤
+$defaultTab = 'custom';
+if ($editForm && !empty($editForm['google_form_url'])) {
+    $defaultTab = 'google';
 }
 
 // 列表
@@ -134,7 +156,7 @@ $myForms = $pdo->prepare("
 $myForms->execute([$me['user_id']]);
 $myForms = $myForms->fetchAll(PDO::FETCH_ASSOC);
 
-// 自動關閉：若 close_at 已過，更新為 closed
+// 自動關閉
 $pdo->prepare("UPDATE forms SET status='closed' WHERE status='open' AND close_at IS NOT NULL AND close_at < NOW()")->execute();
 ?>
 <!DOCTYPE html>
@@ -150,35 +172,63 @@ $pdo->prepare("UPDATE forms SET status='closed' WHERE status='open' AND close_at
 body{font-family:'Noto Sans TC',sans-serif;background:var(--cream);color:var(--text-dark);min-height:100vh}
 a{text-decoration:none;color:inherit}
 .page-wrap{max-width:1000px;margin:0 auto;padding:2rem 1.5rem}
+
 /* 頁首 */
 .page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;flex-wrap:wrap;gap:1rem}
 .page-head h1{font-family:'Noto Serif TC',serif;font-size:1.5rem;font-weight:700;color:var(--navy)}
 .page-head h1 span{color:var(--gold);font-size:1rem;margin-left:.5rem;font-family:'Noto Sans TC',sans-serif;font-weight:400}
+
 /* Msg */
 .msg{padding:.75rem 1.2rem;border-radius:8px;font-size:.88rem;margin-bottom:1.5rem}
 .msg.ok{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0}
 .msg.err{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
+
 /* 卡片 */
 .card{background:var(--white);border:1px solid var(--border-light);border-radius:14px;overflow:hidden;margin-bottom:2rem}
-.card-header{background:var(--navy);padding:.9rem 1.4rem;display:flex;align-items:center;justify-content:space-between;gap:1rem}
-.card-header h2{font-size:.9rem;font-weight:600;color:rgba(255,255,255,.9);letter-spacing:.06em}
+
+/* ── 頁籤 ── */
+.card-tabs{background:var(--navy);display:flex;align-items:stretch;padding:0 1.4rem;gap:0}
+.card-tab{
+  display:flex;align-items:center;gap:.45rem;
+  padding:.75rem 1.3rem;
+  font-size:.84rem;font-weight:600;color:rgba(255,255,255,.5);
+  border-bottom:3px solid transparent;
+  cursor:pointer;transition:color .18s,border-color .18s;
+  user-select:none;white-space:nowrap;
+}
+.card-tab:hover{color:rgba(255,255,255,.8)}
+.card-tab.active{color:#fff;border-bottom-color:var(--gold)}
+.card-tab svg{width:15px;height:15px;flex-shrink:0}
+.tab-badge{
+  background:rgba(200,169,110,.25);color:var(--gold-light);
+  font-size:.62rem;font-weight:700;letter-spacing:.04em;
+  padding:.1rem .45rem;border-radius:4px;
+}
+.tab-badge.google{background:rgba(66,133,244,.2);color:#93c4ff}
+
+/* 卡片標題右側操作（編輯時顯示） */
+.card-header-action{display:flex;align-items:center;gap:.8rem;padding:.6rem 1.4rem;background:var(--navy);border-top:1px solid rgba(255,255,255,.08);justify-content:flex-end}
+
 .card-body{padding:1.5rem}
+
 /* Form 元素 */
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
 .field-row.full{grid-template-columns:1fr}
 .field-row.three{grid-template-columns:1fr 1fr 1fr}
 label{display:block;font-size:.78rem;font-weight:600;color:var(--text-mid);margin-bottom:.35rem;letter-spacing:.04em}
-input[type=text],input[type=datetime-local],input[type=number],select,textarea{
+input[type=text],input[type=url],input[type=datetime-local],input[type=number],select,textarea{
   width:100%;padding:.55rem .85rem;border:1px solid var(--border-mid);border-radius:8px;
   font-size:.88rem;font-family:inherit;color:var(--text-dark);background:var(--white);
   transition:border-color .2s,box-shadow .2s;outline:none}
 input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(58,95,160,.12)}
 textarea{resize:vertical;min-height:80px}
 .hint{font-size:.72rem;color:var(--text-muted);margin-top:.25rem}
+
 /* 切換 */
 .toggle-row{display:flex;align-items:center;gap:.7rem;margin-bottom:1rem}
 .toggle-row label{margin:0;font-size:.85rem;font-weight:500;color:var(--text-dark);cursor:pointer}
 input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
+
 /* 自訂欄位區 */
 .fields-section{border:1px solid var(--border-light);border-radius:10px;padding:1.2rem;margin-top:1rem;background:var(--cream)}
 .fields-section h3{font-size:.82rem;font-weight:700;color:var(--navy);margin-bottom:1rem;letter-spacing:.06em}
@@ -188,14 +238,36 @@ input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);cursor:po
 .btn-rm:hover{background:#fef2f2}
 .btn-add-field{background:none;border:1px dashed var(--border-mid);color:var(--accent);font-size:.8rem;font-weight:500;padding:.45rem 1rem;border-radius:8px;cursor:pointer;margin-top:.4rem;width:100%}
 .btn-add-field:hover{background:rgba(58,95,160,.06)}
+
+/* Google 表單匯入區 */
+.google-import-box{border:1px solid var(--border-light);border-radius:10px;padding:1.4rem;margin-top:1rem;background:var(--cream)}
+.google-import-box .g-logo{display:flex;align-items:center;gap:.6rem;margin-bottom:1rem}
+.google-import-box .g-logo svg{width:22px;height:22px;flex-shrink:0}
+.google-import-box .g-logo span{font-size:.88rem;font-weight:700;color:var(--navy)}
+.google-url-wrap{position:relative}
+.google-url-wrap input{padding-right:5rem}
+.btn-preview{
+  position:absolute;right:6px;top:50%;transform:translateY(-50%);
+  background:var(--accent);color:#fff;border:none;
+  padding:.3rem .8rem;border-radius:6px;font-size:.75rem;font-weight:600;
+  cursor:pointer;transition:background .18s;
+}
+.btn-preview:hover{background:var(--accent-hover)}
+.google-tips{margin-top:1rem;background:#f0f4ff;border:1px solid rgba(58,95,160,.18);border-radius:8px;padding:.85rem 1rem}
+.google-tips p{font-size:.78rem;color:var(--text-mid);line-height:1.75;margin:0}
+.google-tips p strong{color:var(--accent)}
+.google-tips ol{margin:.4rem 0 0 1.2rem;font-size:.78rem;color:var(--text-mid);line-height:1.85}
+.google-notice{margin-top:.8rem;background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:.7rem 1rem;font-size:.78rem;color:#854d0e;line-height:1.7}
+
 /* 按鈕 */
 .btn-primary{background:var(--accent);color:#fff;border:none;padding:.6rem 1.6rem;border-radius:8px;font-size:.88rem;font-weight:600;cursor:pointer;font-family:inherit;transition:background .18s}
 .btn-primary:hover{background:var(--accent-hover)}
-.btn-gold{background:var(--gold);color:var(--navy);border:none;padding:.55rem 1.3rem;border-radius:7px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background .18s}
+.btn-gold{background:var(--gold);color:var(--navy);border:none;padding:.55rem 1.3rem;border-radius:7px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background .18s;display:inline-block}
 .btn-gold:hover{background:var(--gold-light)}
-.btn-ghost{background:transparent;color:var(--text-mid);border:1px solid var(--border-mid);padding:.55rem 1.1rem;border-radius:7px;font-size:.82rem;cursor:pointer;font-family:inherit;transition:background .18s}
+.btn-ghost{background:transparent;color:var(--text-mid);border:1px solid var(--border-mid);padding:.55rem 1.1rem;border-radius:7px;font-size:.82rem;cursor:pointer;font-family:inherit;transition:background .18s;display:inline-block}
 .btn-ghost:hover{background:var(--cream-dark)}
 .btn-danger{background:#fef2f2;color:#c0392b;border:1px solid #fecaca;padding:.45rem 1rem;border-radius:7px;font-size:.78rem;cursor:pointer;font-family:inherit}
+
 /* 表單列表 */
 .form-list{display:flex;flex-direction:column;gap:.8rem}
 .form-item{display:grid;grid-template-columns:1fr auto;gap:1rem;align-items:center;background:var(--white);border:1px solid var(--border-light);border-radius:12px;padding:1rem 1.2rem;transition:box-shadow .2s}
@@ -208,14 +280,21 @@ input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);cursor:po
 .badge.closed{background:#fef2f2;color:#991b1b}
 .badge.draft{background:#fefce8;color:#854d0e}
 .badge.review{background:#f0f4ff;color:var(--accent)}
+.badge.gform{background:#e8f0fe;color:#1a73e8}
 .fi-actions{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+
 .sec-label{display:flex;align-items:center;gap:.6rem;margin-bottom:1.2rem}
 .sec-label h2{font-family:'Noto Serif TC',serif;font-size:1.1rem;font-weight:700;color:var(--navy)}
 .sec-label::before{content:'';width:4px;height:1.15em;background:var(--gold);border-radius:2px;flex-shrink:0}
+
+/* 分隔線 */
+.pane{display:none}.pane.active{display:block}
+
 @media(max-width:640px){
   .field-row,.field-row.three{grid-template-columns:1fr}
   .custom-field-row{grid-template-columns:1fr 1fr;grid-template-rows:auto auto}
   .form-item{grid-template-columns:1fr}
+  .card-tab{padding:.65rem .9rem;font-size:.78rem}
 }
 </style>
 </head>
@@ -228,33 +307,63 @@ input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);cursor:po
   <a href="form_review.php" class="btn-gold">名單審核 →</a>
 </div>
 
-<?php if ($msg): 
+<?php if ($msg):
   $isOk = str_starts_with($msg, 'ok:');
-  $text = substr($msg,3);
+  $text = substr($msg, 3);
 ?>
   <div class="msg <?= $isOk?'ok':'err' ?>"><?= h($text) ?></div>
 <?php endif; ?>
 
 <!-- ══ 建立 / 編輯 表單 ══════════════════════════════════════ -->
 <div class="card">
-  <div class="card-header">
-    <h2><?= $editForm ? '✏️ 編輯表單' : '＋ 建立新表單' ?></h2>
-    <?php if ($editForm): ?>
-      <a href="form_manage.php" class="btn-ghost" style="font-size:.78rem;padding:.3rem .8rem">取消編輯</a>
-    <?php endif; ?>
+
+  <!-- 頁籤列 -->
+  <div class="card-tabs" role="tablist">
+    <div class="card-tab <?= $defaultTab==='custom'?'active':'' ?>"
+         id="tab-custom" role="tab"
+         onclick="switchTab('custom')">
+      <!-- pencil icon -->
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
+      </svg>
+      <?= $editForm ? '編輯表單' : '建立新表單' ?>
+    </div>
+    <div class="card-tab <?= $defaultTab==='google'?'active':'' ?>"
+         id="tab-google" role="tab"
+         onclick="switchTab('google')">
+      <!-- Google G icon -->
+      <svg viewBox="0 0 24 24" fill="currentColor">
+        <path d="M21.35 11.1H12.18v2.94h5.28c-.23 1.26-.95 2.33-2.02 3.04v2.53h3.27c1.91-1.76 3.01-4.35 3.01-7.44 0-.63-.06-1.24-.17-1.84-.01-.08-.02-.15-.2-.23z" fill="#4285F4"/>
+        <path d="M12.18 22c2.76 0 5.07-.91 6.76-2.46l-3.27-2.53c-.91.61-2.07.97-3.49.97-2.68 0-4.95-1.81-5.76-4.25H3.05v2.6C4.73 19.98 8.19 22 12.18 22z" fill="#34A853"/>
+        <path d="M6.42 13.73a5.97 5.97 0 010-3.46V7.67H3.05a10.02 10.02 0 000 8.66l3.37-2.6z" fill="#FBBC05"/>
+        <path d="M12.18 5.56c1.51 0 2.86.52 3.92 1.54l2.94-2.94C17.24 2.49 14.94 1.5 12.18 1.5 8.19 1.5 4.73 3.52 3.05 6.67l3.37 2.6c.81-2.44 3.08-4.71 5.76-4.71z" fill="#EA4335"/>
+      </svg>
+      匯入 Google 表單
+      <span class="tab-badge google">外部連結</span>
+    </div>
   </div>
+
+  <?php if ($editForm): ?>
+  <div class="card-header-action">
+    <a href="form_manage.php" class="btn-ghost" style="font-size:.78rem;padding:.3rem .8rem">✕ 取消編輯</a>
+  </div>
+  <?php endif; ?>
+
   <div class="card-body">
   <form method="post" id="formBuilder">
     <input type="hidden" name="action" value="save_form">
     <input type="hidden" name="form_id" value="<?= h($editForm['id'] ?? '') ?>">
+    <input type="hidden" name="form_mode" id="formModeInput" value="<?= h($defaultTab) ?>">
 
+    <!-- ── 共用欄位（兩個頁籤都顯示） ── -->
     <div class="field-row">
       <div>
         <label>關聯活動 *</label>
         <select name="activity_id" required>
           <option value="">── 請選擇活動 ──</option>
           <?php foreach ($myActivities as $act): ?>
-            <option value="<?= h($act['id']) ?>" <?= ($editForm['activity_id'] ?? '') == $act['id'] ? 'selected' : '' ?>>
+            <option value="<?= h($act['id']) ?>"
+              <?= ($editForm['activity_id'] ?? '') == $act['id'] ? 'selected' : '' ?>>
               <?= h($act['title']) ?>
             </option>
           <?php endforeach; ?>
@@ -262,7 +371,8 @@ input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);cursor:po
       </div>
       <div>
         <label>表單標題 *</label>
-        <input type="text" name="title" placeholder="例：春季成果發表會報名" value="<?= h($editForm['title'] ?? '') ?>" required>
+        <input type="text" name="title" placeholder="例：春季成果發表會報名"
+               value="<?= h($editForm['title'] ?? '') ?>" required>
       </div>
     </div>
 
@@ -274,12 +384,14 @@ input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);cursor:po
     <div class="field-row three">
       <div>
         <label>名額上限</label>
-        <input type="number" name="quota" min="1" placeholder="留空=不限" value="<?= h($editForm['quota'] ?? '') ?>">
+        <input type="number" name="quota" min="1" placeholder="留空=不限"
+               value="<?= h($editForm['quota'] ?? '') ?>">
         <div class="hint">超過名額後自動拒絕新報名</div>
       </div>
       <div>
         <label>自動關閉時間</label>
-        <input type="datetime-local" name="close_at" value="<?= h($editForm['close_at'] ? date('Y-m-d\TH:i', strtotime($editForm['close_at'])) : '') ?>">
+        <input type="datetime-local" name="close_at"
+               value="<?= h($editForm['close_at'] ? date('Y-m-d\TH:i', strtotime($editForm['close_at'])) : '') ?>">
         <div class="hint">到時自動將表單設為關閉</div>
       </div>
       <div>
@@ -292,52 +404,104 @@ input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);cursor:po
       </div>
     </div>
 
-    <div class="toggle-row">
-      <input type="checkbox" id="need_review" name="need_review" value="1" <?= ($editForm['need_review'] ?? 1) ? 'checked' : '' ?>>
-      <label for="need_review">啟用名單審核（社團需手動審核每位報名者）</label>
+    <!-- ── 頁籤內容區 ── -->
+
+    <!-- 自建表單 pane -->
+    <div class="pane <?= $defaultTab==='custom'?'active':'' ?>" id="pane-custom">
+      <div class="toggle-row">
+        <input type="checkbox" id="need_review" name="need_review" value="1"
+               <?= ($editForm['need_review'] ?? 1) ? 'checked' : '' ?>>
+        <label for="need_review">啟用名單審核（社團需手動審核每位報名者）</label>
+      </div>
+
+      <div class="fields-section">
+        <h3>📋 自訂表單欄位</h3>
+        <div style="display:grid;grid-template-columns:2fr 1fr 2fr auto auto;gap:.6rem;margin-bottom:.4rem">
+          <span style="font-size:.72rem;color:var(--text-muted);font-weight:600">欄位名稱</span>
+          <span style="font-size:.72rem;color:var(--text-muted);font-weight:600">類型</span>
+          <span style="font-size:.72rem;color:var(--text-muted);font-weight:600">選項（用 | 分隔）</span>
+          <span style="font-size:.72rem;color:var(--text-muted);font-weight:600">必填</span>
+          <span></span>
+        </div>
+        <div id="fieldsContainer">
+          <?php if ($editFields): foreach ($editFields as $idx => $f): ?>
+          <div class="custom-field-row">
+            <input type="text" name="field_label[]" placeholder="如：姓名、系所…"
+                   value="<?= h($f['label']) ?>">
+            <select name="field_type[]">
+              <?php foreach(['text'=>'短文字','textarea'=>'長文字','select'=>'下拉選單','radio'=>'單選','checkbox'=>'複選','number'=>'數字','email'=>'Email','tel'=>'電話'] as $v=>$lbl): ?>
+                <option value="<?= $v ?>" <?= $f['field_type']===$v?'selected':'' ?>><?= $lbl ?></option>
+              <?php endforeach; ?>
+            </select>
+            <input type="text" name="field_options[]" placeholder="選A|選B|選C"
+                   value="<?= h($f['options']) ?>">
+            <input type="checkbox" name="field_required[<?= $idx ?>]" value="1"
+                   <?= $f['is_required']?'checked':'' ?>
+                   style="width:16px;height:16px;margin:auto">
+            <button type="button" class="btn-rm"
+                    onclick="this.closest('.custom-field-row').remove()">✕</button>
+          </div>
+          <?php endforeach; else: ?>
+          <div class="custom-field-row">
+            <input type="text" name="field_label[]" placeholder="如：姓名">
+            <select name="field_type[]">
+              <option value="text">短文字</option><option value="textarea">長文字</option>
+              <option value="select">下拉選單</option><option value="radio">單選</option>
+              <option value="checkbox">複選</option><option value="number">數字</option>
+              <option value="email">Email</option><option value="tel">電話</option>
+            </select>
+            <input type="text" name="field_options[]" placeholder="（選項用 | 分隔）">
+            <input type="checkbox" name="field_required[0]" value="1"
+                   style="width:16px;height:16px;margin:auto">
+            <button type="button" class="btn-rm"
+                    onclick="this.closest('.custom-field-row').remove()">✕</button>
+          </div>
+          <?php endif; ?>
+        </div>
+        <button type="button" class="btn-add-field" onclick="addField()">＋ 新增欄位</button>
+      </div>
     </div>
 
-    <!-- 自訂欄位 -->
-    <div class="fields-section">
-      <h3>📋 自訂表單欄位</h3>
-      <div style="display:grid;grid-template-columns:2fr 1fr 2fr auto auto;gap:.6rem;margin-bottom:.4rem">
-        <span style="font-size:.72rem;color:var(--text-muted);font-weight:600">欄位名稱</span>
-        <span style="font-size:.72rem;color:var(--text-muted);font-weight:600">類型</span>
-        <span style="font-size:.72rem;color:var(--text-muted);font-weight:600">選項（用 | 分隔）</span>
-        <span style="font-size:.72rem;color:var(--text-muted);font-weight:600">必填</span>
-        <span></span>
-      </div>
-      <div id="fieldsContainer">
-        <?php if ($editFields): foreach ($editFields as $f): ?>
-        <div class="custom-field-row">
-          <input type="text" name="field_label[]" placeholder="如：姓名、系所…" value="<?= h($f['label']) ?>" required>
-          <select name="field_type[]">
-            <?php foreach(['text'=>'短文字','textarea'=>'長文字','select'=>'下拉選單','radio'=>'單選','checkbox'=>'複選','number'=>'數字','email'=>'Email','tel'=>'電話'] as $v=>$lbl): ?>
-              <option value="<?= $v ?>" <?= $f['field_type']===$v?'selected':'' ?>><?= $lbl ?></option>
-            <?php endforeach; ?>
-          </select>
-          <input type="text" name="field_options[]" placeholder="選A|選B|選C" value="<?= h($f['options']) ?>">
-          <input type="checkbox" name="field_required[<?= $loop ?? 0 ?>]" value="1" <?= $f['is_required']?'checked':'' ?> style="width:16px;height:16px;margin:auto">
-          <button type="button" class="btn-rm" onclick="this.closest('.custom-field-row').remove()">✕</button>
+    <!-- Google 表單 pane -->
+    <div class="pane <?= $defaultTab==='google'?'active':'' ?>" id="pane-google">
+
+      <div class="google-import-box">
+        <div class="g-logo">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M21.35 11.1H12.18v2.94h5.28c-.23 1.26-.95 2.33-2.02 3.04v2.53h3.27c1.91-1.76 3.01-4.35 3.01-7.44 0-.63-.06-1.24-.17-1.84z" fill="#4285F4"/>
+            <path d="M12.18 22c2.76 0 5.07-.91 6.76-2.46l-3.27-2.53c-.91.61-2.07.97-3.49.97-2.68 0-4.95-1.81-5.76-4.25H3.05v2.6C4.73 19.98 8.19 22 12.18 22z" fill="#34A853"/>
+            <path d="M6.42 13.73a5.97 5.97 0 010-3.46V7.67H3.05a10.02 10.02 0 000 8.66l3.37-2.6z" fill="#FBBC05"/>
+            <path d="M12.18 5.56c1.51 0 2.86.52 3.92 1.54l2.94-2.94C17.24 2.49 14.94 1.5 12.18 1.5 8.19 1.5 4.73 3.52 3.05 6.67l3.37 2.6c.81-2.44 3.08-4.71 5.76-4.71z" fill="#EA4335"/>
+          </svg>
+          <span>貼上 Google 表單連結</span>
         </div>
-        <?php endforeach; else: ?>
-        <div class="custom-field-row">
-          <input type="text" name="field_label[]" placeholder="如：姓名" required>
-          <select name="field_type[]">
-            <option value="text">短文字</option><option value="textarea">長文字</option>
-            <option value="select">下拉選單</option><option value="radio">單選</option>
-            <option value="checkbox">複選</option><option value="number">數字</option>
-            <option value="email">Email</option><option value="tel">電話</option>
-          </select>
-          <input type="text" name="field_options[]" placeholder="（選項用 | 分隔）">
-          <input type="checkbox" name="field_required[0]" value="1" style="width:16px;height:16px;margin:auto">
-          <button type="button" class="btn-rm" onclick="this.closest('.custom-field-row').remove()">✕</button>
+
+        <div class="google-url-wrap">
+          <input type="url" name="google_form_url" id="googleFormUrl"
+                 placeholder="https://docs.google.com/forms/d/e/…/viewform"
+                 value="<?= h($editForm['google_form_url'] ?? '') ?>">
+          <button type="button" class="btn-preview" onclick="previewGoogle()">預覽</button>
         </div>
-        <?php endif; ?>
+
+        <div class="google-tips">
+          <p><strong>如何取得 Google 表單連結？</strong></p>
+          <ol>
+            <li>開啟你的 Google 表單</li>
+            <li>點選右上角「傳送」按鈕</li>
+            <li>選擇「連結」分頁（🔗 圖示）</li>
+            <li>複製連結並貼到上方欄位</li>
+          </ol>
+        </div>
+
+        <div class="google-notice">
+          ⚠️ 使用 Google 表單模式時，報名資料由 Google 收集管理，<br>
+          平台僅作為連結導向，<strong>不會記錄學生的填寫內容</strong>。<br>
+          若需名單審核功能，請改用「建立新表單」模式。
+        </div>
       </div>
-      <button type="button" class="btn-add-field" onclick="addField()">＋ 新增欄位</button>
     </div>
 
+    <!-- 送出按鈕 -->
     <div style="margin-top:1.5rem;display:flex;gap:.8rem;flex-wrap:wrap">
       <button type="submit" class="btn-primary">💾 儲存表單</button>
       <?php if ($editForm): ?>
@@ -353,25 +517,38 @@ input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);cursor:po
 <div class="form-list">
   <?php if (empty($myForms)): ?>
     <p style="color:var(--text-muted);font-size:.88rem">尚未建立任何表單。</p>
-  <?php else: foreach ($myForms as $f): 
+  <?php else: foreach ($myForms as $f):
     $statusLabel = ['open'=>'開放中','closed'=>'已關閉','draft'=>'草稿'][$f['status']] ?? $f['status'];
+    $isGoogle    = !empty($f['google_form_url']);
   ?>
     <div class="form-item">
       <div>
         <div class="fi-title"><?= h($f['title']) ?></div>
         <div class="fi-meta">
           活動：<?= h($f['act_title']) ?> ·
-          報名：<?= h($f['sub_count']) ?> 人<?= $f['quota'] ? ' / '.$f['quota'].' 人' : '' ?> ·
+          <?php if ($isGoogle): ?>
+            Google 表單模式 ·
+          <?php else: ?>
+            報名：<?= h($f['sub_count']) ?> 人<?= $f['quota'] ? ' / '.$f['quota'].' 人' : '' ?> ·
+          <?php endif; ?>
           <?= $f['close_at'] ? '關閉：'.date('Y/m/d H:i',strtotime($f['close_at'])) : '無自動關閉' ?>
         </div>
         <div class="fi-badges">
           <span class="badge <?= h($f['status']) ?>"><?= h($statusLabel) ?></span>
-          <?php if ($f['need_review']): ?><span class="badge review">需審核</span><?php endif; ?>
+          <?php if ($isGoogle): ?>
+            <span class="badge gform">Google 表單</span>
+          <?php elseif ($f['need_review']): ?>
+            <span class="badge review">需審核</span>
+          <?php endif; ?>
         </div>
       </div>
       <div class="fi-actions">
         <a href="form_manage.php?edit=<?= h($f['id']) ?>" class="btn-ghost">編輯</a>
-        <a href="form_review.php?form_id=<?= h($f['id']) ?>" class="btn-gold">審核名單</a>
+        <?php if ($isGoogle): ?>
+          <a href="<?= h($f['google_form_url']) ?>" target="_blank" class="btn-gold">開啟表單 ↗</a>
+        <?php else: ?>
+          <a href="form_review.php?form_id=<?= h($f['id']) ?>" class="btn-gold">審核名單</a>
+        <?php endif; ?>
         <?php if ($f['status']==='open'): ?>
           <form method="post" style="display:inline">
             <input type="hidden" name="action" value="toggle_status">
@@ -396,12 +573,26 @@ input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);cursor:po
 
 <script>
 let fieldIdx = <?= max(count($editFields), 1) ?>;
+
+// ── 頁籤切換 ──────────────────────────────────────────────
+function switchTab(tab) {
+  // 頁籤樣式
+  document.querySelectorAll('.card-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  // 內容顯示
+  document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+  document.getElementById('pane-' + tab).classList.add('active');
+  // 記錄目前模式
+  document.getElementById('formModeInput').value = tab;
+}
+
+// ── 新增欄位 ──────────────────────────────────────────────
 function addField() {
   const c = document.getElementById('fieldsContainer');
   const div = document.createElement('div');
   div.className = 'custom-field-row';
   div.innerHTML = `
-    <input type="text" name="field_label[]" placeholder="欄位名稱" required>
+    <input type="text" name="field_label[]" placeholder="欄位名稱">
     <select name="field_type[]">
       <option value="text">短文字</option><option value="textarea">長文字</option>
       <option value="select">下拉選單</option><option value="radio">單選</option>
@@ -409,10 +600,20 @@ function addField() {
       <option value="email">Email</option><option value="tel">電話</option>
     </select>
     <input type="text" name="field_options[]" placeholder="（選項用 | 分隔）">
-    <input type="checkbox" name="field_required[${fieldIdx}]" value="1" style="width:16px;height:16px;margin:auto">
-    <button type="button" class="btn-rm" onclick="this.closest('.custom-field-row').remove()">✕</button>`;
+    <input type="checkbox" name="field_required[${fieldIdx}]" value="1"
+           style="width:16px;height:16px;margin:auto">
+    <button type="button" class="btn-rm"
+            onclick="this.closest('.custom-field-row').remove()">✕</button>`;
   c.appendChild(div);
   fieldIdx++;
+}
+
+// ── Google 表單預覽 ───────────────────────────────────────
+function previewGoogle() {
+  const url = document.getElementById('googleFormUrl').value.trim();
+  if (!url) { alert('請先填入 Google 表單連結'); return; }
+  if (!url.startsWith('http')) { alert('連結格式不正確'); return; }
+  window.open(url, '_blank');
 }
 </script>
 
