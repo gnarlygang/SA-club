@@ -31,19 +31,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (in_array($action, ['approve','reject'])) {
         $newStatus = $action === 'approve' ? 'approved' : 'rejected';
-        $chk = $pdo->prepare("
-            SELECT s.id FROM form_submissions s
-            JOIN forms f ON f.id=s.form_id
-            WHERE s.id=? AND f.creator_id=?
-        ");
-        $chk->execute([$subId, $me['user_id']]);
-        if ($chk->fetch()) {
-            $pdo->prepare("
-                UPDATE form_submissions
-                SET status=?, reviewer_id=?, reviewed_at=NOW(), note=?
-                WHERE id=?
-            ")->execute([$newStatus, $me['user_id'], $note, $subId]);
-            $msg = 'ok:審核已更新';
+
+        // 拒絕時備注為必填
+        if ($newStatus === 'rejected' && $note === '') {
+            $msg = 'err:拒絕時必須填寫理由';
+        } else {
+            $chk = $pdo->prepare("
+                SELECT s.id, s.status FROM form_submissions s
+                JOIN forms f ON f.id=s.form_id
+                WHERE s.id=? AND f.creator_id=?
+            ");
+            $chk->execute([$subId, $me['user_id']]);
+            $row = $chk->fetch();
+            if ($row) {
+                // 已通過的不可改為拒絕
+                if ($row['status'] === 'approved' && $newStatus === 'rejected') {
+                    $msg = 'err:已通過的申請不可改為拒絕';
+                } else {
+                    $pdo->prepare("
+                        UPDATE form_submissions
+                        SET status=?, reviewer_id=?, reviewed_at=NOW(), note=?
+                        WHERE id=?
+                    ")->execute([$newStatus, $me['user_id'], $note, $subId]);
+                    $msg = 'ok:審核已更新';
+                }
+            }
         }
     }
 
@@ -53,11 +65,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $batchS = $_POST['batch_status'] ?? 'approved';
         foreach ($ids as $id) {
             $id = (int)$id;
+            // 批次拒絕時，跳過已通過的項目
+            $extra = ($batchS === 'rejected') ? " AND s.status != 'approved'" : "";
             $pdo->prepare("
                 UPDATE form_submissions s
                 JOIN forms f ON f.id=s.form_id
                 SET s.status=?, s.reviewer_id=?, s.reviewed_at=NOW()
-                WHERE s.id=? AND f.creator_id=?
+                WHERE s.id=? AND f.creator_id=?{$extra}
             ")->execute([$batchS, $me['user_id'], $id, $me['user_id']]);
         }
         $msg = 'ok:批次審核完成';
@@ -93,7 +107,6 @@ if ($formId) {
 
     if ($currentForm) {
         $filterStatus = $_GET['filter'] ?? 'all';
-        // ★ 修正：u.name → u.username，u.nickname 保留（資料庫有此欄位）
         $sql = "
             SELECT s.*, u.username AS uname, u.nickname AS unick, u.email AS uemail
             FROM form_submissions s
@@ -138,16 +151,18 @@ a{text-decoration:none;color:inherit}
 .msg.ok{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0}
 .msg.err{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
 .layout{display:grid;grid-template-columns:240px 1fr;gap:1.5rem;align-items:start}
-.sidebar-nav{background:var(--white);border:1px solid var(--border-light);border-radius:12px;overflow:hidden}
-.sidebar-nav .nav-header{background:var(--navy);padding:.75rem 1rem;font-size:.78rem;font-weight:600;color:rgba(255,255,255,.8);letter-spacing:.06em}
+.layout>div:last-child{min-width:0;overflow:hidden}
+.sidebar-nav{background:var(--white);border:1px solid var(--border-light);border-radius:12px;}
+.sidebar-nav .nav-header{background:var(--navy);padding:.75rem 1rem;font-size:.78rem;font-weight:600;color:rgba(255,255,255,.8);letter-spacing:.06em;border-radius:11px 11px 0 0;}
 .nav-item{display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;border-bottom:1px solid var(--border-light);cursor:pointer;transition:background .15s;color:var(--text-dark);font-size:.83rem}
 .nav-item:last-child{border-bottom:none}
 .nav-item:hover,.nav-item.active{background:var(--cream)}
 .nav-item .ni-title{font-weight:500;line-height:1.3}
 .nav-item .ni-sub{font-size:.7rem;color:var(--text-muted)}
 .nav-badge{background:var(--accent);color:#fff;font-size:.65rem;font-weight:700;padding:.1rem .45rem;border-radius:999px;flex-shrink:0}
-.main-card{background:var(--white);border:1px solid var(--border-light);border-radius:14px;overflow:hidden}
-.main-card-header{background:var(--navy);padding:.9rem 1.4rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.main-card{background:var(--white);border:1px solid var(--border-light);border-radius:14px;}
+.table-scroll{overflow-x:auto;border-radius:0 0 14px 14px;}
+.main-card-header{background:var(--navy);padding:.9rem 1.4rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;border-radius:13px 13px 0 0;}
 .main-card-header h2{font-size:.9rem;font-weight:600;color:rgba(255,255,255,.9)}
 .filter-bar{display:flex;gap:.5rem;padding:1rem 1.4rem;border-bottom:1px solid var(--border-light);flex-wrap:wrap;align-items:center}
 .filter-btn{font-size:.78rem;padding:.35rem .9rem;border-radius:6px;border:1px solid var(--border-mid);background:var(--cream);color:var(--text-mid);cursor:pointer;font-family:inherit;transition:background .15s}
@@ -169,11 +184,13 @@ a{text-decoration:none;color:inherit}
 .btn-approve{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;padding:.3rem .75rem;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:inherit;font-weight:600}
 .btn-reject{background:#fef2f2;color:#c0392b;border:1px solid #fecaca;padding:.3rem .75rem;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:inherit;font-weight:600}
 .btn-approve:hover{background:#dcfce7}.btn-reject:hover{background:#fee2e2}
+.approved-label{font-size:.72rem;color:#166534;font-weight:700;padding:.3rem .5rem;border:1px solid #bbf7d0;border-radius:6px;background:#f0fdf4;white-space:nowrap}
+.note-input{font-size:.78rem;padding:.3rem .6rem;border:1px solid var(--border-mid);border-radius:6px;width:130px;font-family:inherit}
+.note-input.required-field{border-color:#f87171}
 .batch-bar{display:flex;gap:.7rem;align-items:center;padding:.8rem 1.4rem;border-bottom:1px solid var(--border-light);background:#f8f9ff;flex-wrap:wrap}
 .batch-bar label{font-size:.8rem;font-weight:500;color:var(--text-mid)}
 .btn-batch-approve{background:var(--accent);color:#fff;border:none;padding:.4rem 1rem;border-radius:6px;font-size:.8rem;cursor:pointer;font-family:inherit;font-weight:600}
 .btn-batch-reject{background:#fef2f2;color:#c0392b;border:1px solid #fecaca;padding:.4rem 1rem;border-radius:6px;font-size:.8rem;cursor:pointer;font-family:inherit}
-.note-input{font-size:.78rem;padding:.3rem .6rem;border:1px solid var(--border-mid);border-radius:6px;width:130px;font-family:inherit}
 .btn-gold{background:var(--gold);color:var(--navy);border:none;padding:.5rem 1.1rem;border-radius:7px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit}
 .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-muted);font-size:.88rem}
 @media(max-width:700px){.layout{grid-template-columns:1fr}.sidebar-nav{margin-bottom:1rem}}
@@ -257,13 +274,15 @@ a{text-decoration:none;color:inherit}
       </div>
 
       <!-- 批次 -->
-      <?php if (!empty($submissions) && $currentForm['need_review']): ?>
+      <?php if (!empty($submissions)): ?>
       <form method="post" id="batchForm">
         <input type="hidden" name="action" value="batch">
         <div class="batch-bar">
           <label><input type="checkbox" id="checkAll" onchange="toggleAll(this)"> 全選</label>
-          <button type="submit" name="batch_status" value="approved" class="btn-batch-approve" onclick="return confirm('批次通過選取項目？')">批次通過</button>
-          <button type="submit" name="batch_status" value="rejected" class="btn-batch-reject" onclick="return confirm('批次拒絕選取項目？')">批次拒絕</button>
+          <button type="submit" name="batch_status" value="approved" class="btn-batch-approve"
+                  onclick="return confirm('批次通過選取項目？')">批次通過</button>
+          <button type="submit" name="batch_status" value="rejected" class="btn-batch-reject"
+                  onclick="return confirm('批次拒絕選取項目？（已通過的申請將自動跳過）')">批次拒絕</button>
         </div>
       <?php endif; ?>
 
@@ -271,27 +290,30 @@ a{text-decoration:none;color:inherit}
       <?php if (empty($submissions)): ?>
         <div class="empty-state">目前沒有符合條件的報名紀錄</div>
       <?php else: ?>
-      <div style="overflow-x:auto">
+      <div class="table-scroll">
       <table class="sub-table">
         <thead>
           <tr>
-            <?php if ($currentForm['need_review']): ?><th><input type="checkbox" id="checkAll2" onchange="toggleAll(this)"></th><?php endif; ?>
+            <th><input type="checkbox" id="checkAll2" onchange="toggleAll(this)"></th>
             <th>#</th><th>學生</th>
             <?php foreach ($formFields as $ff): ?><th><?= h($ff['label']) ?></th><?php endforeach; ?>
             <th>狀態</th><th>確認參與</th><th>備注</th>
-            <?php if ($currentForm['need_review']): ?><th>操作</th><?php endif; ?>
+            <th>操作</th>
             <th>報名時間</th>
           </tr>
         </thead>
         <tbody>
         <?php foreach ($submissions as $idx=>$sub): ?>
           <tr>
-            <?php if ($currentForm['need_review']): ?>
-              <td><input type="checkbox" name="sub_ids[]" value="<?= h($sub['id']) ?>" form="batchForm" class="sub-check"></td>
-            <?php endif; ?>
+            <td>
+              <?php if ($sub['status'] !== 'approved'): ?>
+                <input type="checkbox" name="sub_ids[]" value="<?= h($sub['id']) ?>" form="batchForm" class="sub-check">
+              <?php else: ?>
+                <input type="checkbox" disabled title="已通過的申請無法再被拒絕">
+              <?php endif; ?>
+            </td>
             <td style="color:var(--text-muted)"><?= $idx+1 ?></td>
             <td>
-              <!-- ★ 修正：顯示 username，nickname 有值才顯示 -->
               <strong><?= h($sub['uname']) ?></strong>
               <?php if (!empty($sub['unick'])): ?>
                 <br><span style="font-size:.72rem;color:var(--text-muted)"><?= h($sub['unick']) ?></span>
@@ -304,25 +326,30 @@ a{text-decoration:none;color:inherit}
             <td><span class="status-badge <?= h($sub['status']) ?>"><?= ['pending'=>'待審核','approved'=>'已通過','rejected'=>'已拒絕'][$sub['status']] ?></span></td>
             <td class="confirmed-icon"><?= $sub['confirmed'] ? '✅' : '⬜' ?></td>
             <td style="max-width:120px;font-size:.75rem;color:var(--text-mid)"><?= h($sub['note'] ?: '—') ?></td>
-            <?php if ($currentForm['need_review']): ?>
             <td>
-              <form method="post" style="display:flex;gap:.3rem;flex-wrap:wrap;align-items:center">
-                <input type="hidden" name="sub_id" value="<?= h($sub['id']) ?>">
-                <input type="text" name="note" class="note-input" placeholder="備注（選填）" value="<?= h($sub['note']) ?>">
-                <button type="submit" name="action" value="approve" class="btn-approve">✓ 通過</button>
-                <button type="submit" name="action" value="reject"  class="btn-reject">✕ 拒絕</button>
-              </form>
+              <?php if ($sub['status'] === 'approved'): ?>
+                <span class="approved-label">✓ 已通過（不可撤銷）</span>
+              <?php else: ?>
+                <form method="post" style="display:flex;gap:.3rem;flex-wrap:wrap;align-items:center"
+                      onsubmit="return validateReview(this)">
+                  <input type="hidden" name="sub_id" value="<?= h($sub['id']) ?>">
+                  <input type="text" name="note" class="note-input"
+                         placeholder="拒絕時必填理由"
+                         value="<?= h($sub['note']) ?>">
+                  <button type="submit" name="action" value="approve" class="btn-approve">✓ 通過</button>
+                  <button type="submit" name="action" value="reject"  class="btn-reject">✕ 拒絕</button>
+                </form>
+              <?php endif; ?>
             </td>
-            <?php endif; ?>
             <td style="white-space:nowrap;font-size:.75rem;color:var(--text-muted)"><?= fmtDT($sub['submitted_at']) ?></td>
           </tr>
         <?php endforeach; ?>
         </tbody>
       </table>
-      </div>
+      </div><!-- /.table-scroll -->
       <?php endif; ?>
 
-      <?php if (!empty($submissions) && $currentForm['need_review']): ?></form><?php endif; ?>
+      <?php if (!empty($submissions)): ?></form><?php endif; ?>
     </div>
   <?php endif; ?>
   </div>
@@ -331,10 +358,34 @@ a{text-decoration:none;color:inherit}
 </div>
 <script>
 function toggleAll(src){
-  document.querySelectorAll('.sub-check').forEach(c=>c.checked=src.checked);
-  const other=document.querySelector(src.id==='checkAll'?'#checkAll2':'#checkAll');
-  if(other) other.checked=src.checked;
+  document.querySelectorAll('.sub-check').forEach(c => c.checked = src.checked);
+  const other = document.querySelector(src.id === 'checkAll' ? '#checkAll2' : '#checkAll');
+  if (other) other.checked = src.checked;
 }
+
+function validateReview(form) {
+  const submitter = document.activeElement;
+  const action = submitter ? submitter.value : '';
+  if (action === 'reject') {
+    const noteInput = form.querySelector('input[name="note"]');
+    if (!noteInput || noteInput.value.trim() === '') {
+      noteInput.classList.add('required-field');
+      noteInput.focus();
+      noteInput.placeholder = '⚠ 拒絕時必須填寫理由';
+      alert('拒絕時必須填寫理由！');
+      return false;
+    }
+  }
+  return true;
+}
+
+// 備注欄位輸入時移除紅框提示
+document.querySelectorAll('.note-input').forEach(input => {
+  input.addEventListener('input', function() {
+    this.classList.remove('required-field');
+    this.placeholder = '拒絕時必填理由';
+  });
+});
 </script>
 <?php require_once __DIR__ . "/footer.php"; ?>
 </body>
