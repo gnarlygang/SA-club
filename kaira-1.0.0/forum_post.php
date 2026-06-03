@@ -98,8 +98,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $is_logged_in) {
         }
 
     } elseif ($action === 'add_comment') {
-        $content   = trim($_POST['content']    ?? '');
-        $parent_id = (int)($_POST['parent_id'] ?? 0) ?: null;
+        $content      = trim($_POST['content']    ?? '');
+        $parent_id    = (int)($_POST['parent_id'] ?? 0) ?: null;
+        $is_anonymous = isset($_POST['is_anonymous']) ? 1 : 0;
         if ($content === '') {
             $error = "留言內容不可為空。";
         } else {
@@ -108,8 +109,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $is_logged_in) {
                 $pc->execute([$parent_id, $post_id]);
                 if (!$pc->fetch()) $parent_id = null;
             }
-            $pdo->prepare("INSERT INTO forum_comments (post_id,user_id,content,parent_id) VALUES (?,?,?,?)")
-                ->execute([$post_id, $current_user_id, $content, $parent_id]);
+            $pdo->prepare("INSERT INTO forum_comments (post_id,user_id,content,parent_id,is_anonymous) VALUES (?,?,?,?,?)")
+                ->execute([$post_id, $current_user_id, $content, $parent_id, $is_anonymous]);
             header("Location: forum_post.php?id={$post_id}#comments"); exit;
         }
     }
@@ -161,6 +162,19 @@ function time_ago($dt) {
     if ($d < 86400) return floor($d/3600)." 小時前";
     return date("Y/m/d H:i", strtotime($dt));
 }
+
+// 取得留言顯示名稱：匿名則顯示「匿名使用者」，管理員仍可看到真實名稱
+function display_name($c, $is_admin, $current_user_id) {
+    $real = $c["nickname"] ?: $c["username"];
+    if (!empty($c['is_anonymous']) && (int)$c['is_anonymous'] === 1) {
+        // 本人或管理員可以看到真實名稱（加括號提示）
+        if ($is_admin || (int)$c['user_id'] === (int)$current_user_id) {
+            return "匿名使用者（{$real}）";
+        }
+        return "匿名使用者";
+    }
+    return $real;
+}
 ?>
 <!DOCTYPE html>
 <html lang="zh-Hant">
@@ -182,6 +196,7 @@ body{font-family:"Microsoft JhengHei",sans-serif;background:#f0f2f5;min-height:1
 .act-group{display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
 .av{width:32px;height:32px;border-radius:50%;background:#2d3a4a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
 .av.sm{width:28px;height:28px;font-size:11px}
+.av.anon{background:#9aa}
 .btn-e{border:1px solid #c8d4e8;background:#f0f4fb;color:#3a5a8a;border-radius:999px;padding:6px 14px;font-size:13px;cursor:pointer}.btn-e:hover{background:#dce7f7}
 .btn-d{border:1px solid #f1d4d4;background:#fff7f7;color:#b45353;border-radius:999px;padding:6px 14px;font-size:13px;cursor:pointer}.btn-d:hover{background:#fee2e2;color:#991b1b}
 .btn-r{border:1px solid #f1d4d4;background:#fff7f7;color:#b45353;border-radius:999px;padding:6px 14px;font-size:13px;cursor:pointer}.btn-r:hover{background:#fee2e2;color:#991b1b}
@@ -200,6 +215,7 @@ body{font-family:"Microsoft JhengHei",sans-serif;background:#f0f2f5;min-height:1
 .cmt-time{font-size:12px;color:#aab}
 .cmt-content{font-size:14px;color:#445;line-height:1.7;white-space:pre-wrap}
 .cmt-btns{display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap}
+.anon-badge{display:inline-flex;align-items:center;gap:3px;background:#f0f0f4;color:#888;border-radius:6px;padding:1px 7px;font-size:11px;font-weight:600;margin-left:4px}
 .replies-area{margin-top:8px;padding-left:40px}
 .replies-toggle{display:inline-flex;align-items:center;gap:5px;background:none;border:none;color:#6e8ab0;font-size:13px;font-weight:600;cursor:pointer;padding:4px 0;margin-bottom:6px}
 .replies-toggle:hover{color:#3a5a8a}
@@ -219,6 +235,15 @@ body{font-family:"Microsoft JhengHei",sans-serif;background:#f0f2f5;min-height:1
 .reply-cancel:hover{color:#334}
 .fc{border:1.5px solid var(--inp);border-radius:8px;padding:10px 14px;font-size:14px;resize:vertical;width:100%;font-family:inherit}
 .fc:focus{border-color:#6e8ab0;box-shadow:0 0 0 3px rgba(110,138,176,.15);outline:none}
+/* 匿名切換 */
+.identity-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.identity-label{font-size:13px;color:#667;font-weight:500}
+.identity-toggle{display:flex;border:1.5px solid var(--inp);border-radius:999px;overflow:hidden;font-size:13px}
+.identity-toggle input[type=radio]{display:none}
+.identity-toggle label{padding:6px 16px;cursor:pointer;color:#667;transition:background .15s,color .15s;user-select:none}
+.identity-toggle input[type=radio]:checked + label{background:#2d3a4a;color:#fff;font-weight:600}
+.identity-preview{font-size:12px;color:#9aa;display:flex;align-items:center;gap:5px}
+.identity-preview .pv-name{font-weight:600;color:#555}
 .btn-sub{background:#2d3a4a;color:#fff;border:none;border-radius:8px;padding:11px 24px;font-size:14px;font-weight:600;cursor:pointer;margin-top:12px}
 .btn-sub:hover{background:#3d4e62}
 .alert-err{background:#fdf0ef;border:1px solid #f0c4c0;color:var(--err);border-radius:8px;padding:10px 14px;font-size:13px;display:flex;align-items:center;gap:8px;margin-bottom:14px}
@@ -243,6 +268,7 @@ body{font-family:"Microsoft JhengHei",sans-serif;background:#f0f2f5;min-height:1
     .post-card,.cmt-form-card,.modal-box{padding:20px}
     .post-top{flex-direction:column}
     .replies-area{padding-left:16px}
+    .identity-row{gap:8px}
 }
 </style>
 
@@ -314,7 +340,8 @@ body{font-family:"Microsoft JhengHei",sans-serif;background:#f0f2f5;min-height:1
 <?php else: ?>
 
 <?php foreach ($top_comments as $c):
-    $c_author    = $c["nickname"] ?: $c["username"];
+    $c_author    = display_name($c, $is_admin, $current_user_id);
+    $c_is_anon   = !empty($c['is_anonymous']) && (int)$c['is_anonymous'] === 1;
     $can_edit_c  = $is_logged_in && ((int)$c['user_id'] == $current_user_id || $is_admin);
     $sub_replies = $replies_map[$c['id']] ?? [];
     $reply_count = count($sub_replies);
@@ -323,8 +350,11 @@ body{font-family:"Microsoft JhengHei",sans-serif;background:#f0f2f5;min-height:1
     <div class="cmt-card" id="comment-<?= $c['id'] ?>">
         <div class="cmt-top">
             <div class="cmt-meta">
-                <div class="av sm"><?= mb_substr($c_author,0,1) ?></div>
+                <div class="av sm <?= $c_is_anon ? 'anon' : '' ?>"><?= $c_is_anon ? '?' : mb_substr($c_author,0,1) ?></div>
                 <span class="cmt-author"><?= htmlspecialchars($c_author) ?></span>
+                <?php if ($c_is_anon): ?>
+                <span class="anon-badge"><i class="bi bi-incognito"></i>匿名</span>
+                <?php endif; ?>
                 <span class="cmt-time"><?= time_ago($c["created_at"]) ?></span>
                 <?php if (!empty($c['updated_at']) && $c['updated_at'] !== $c['created_at']): ?>
                 <span style="color:#aab;font-size:11px">(已編輯)</span>
@@ -368,15 +398,19 @@ body{font-family:"Microsoft JhengHei",sans-serif;background:#f0f2f5;min-height:1
         </button>
         <div class="replies-list" id="replies-<?= $c['id'] ?>">
             <?php foreach ($sub_replies as $r):
-                $r_author   = $r["nickname"] ?: $r["username"];
+                $r_author   = display_name($r, $is_admin, $current_user_id);
+                $r_is_anon  = !empty($r['is_anonymous']) && (int)$r['is_anonymous'] === 1;
                 $can_edit_r = $is_logged_in && ((int)$r['user_id'] == $current_user_id || $is_admin);
                 $at_name    = $c_author;
             ?>
             <div class="reply-card" id="comment-<?= $r['id'] ?>">
                 <div class="reply-top">
                     <div class="cmt-meta">
-                        <div class="av sm"><?= mb_substr($r_author,0,1) ?></div>
+                        <div class="av sm <?= $r_is_anon ? 'anon' : '' ?>"><?= $r_is_anon ? '?' : mb_substr($r_author,0,1) ?></div>
                         <span class="cmt-author"><?= htmlspecialchars($r_author) ?></span>
+                        <?php if ($r_is_anon): ?>
+                        <span class="anon-badge"><i class="bi bi-incognito"></i>匿名</span>
+                        <?php endif; ?>
                         <span class="cmt-time"><?= time_ago($r["created_at"]) ?></span>
                         <?php if (!empty($r['updated_at']) && $r['updated_at'] !== $r['created_at']): ?>
                         <span style="color:#aab;font-size:11px">(已編輯)</span>
@@ -420,7 +454,9 @@ body{font-family:"Microsoft JhengHei",sans-serif;background:#f0f2f5;min-height:1
 <?php endforeach; ?>
 <?php endif; ?>
 
-<?php if ($is_logged_in): ?>
+<?php if ($is_logged_in):
+    $my_name = $_SESSION['nickname'] ?? $_SESSION['username'] ?? '我';
+?>
 <div class="cmt-form-card" id="cmt-form-card">
     <div class="cmt-form-title">
         <i class="bi bi-pencil"></i>
@@ -433,6 +469,23 @@ body{font-family:"Microsoft JhengHei",sans-serif;background:#f0f2f5;min-height:1
     <form method="POST" action="forum_post.php?id=<?= $post_id ?>">
         <input type="hidden" name="action"    value="add_comment">
         <input type="hidden" name="parent_id" id="input-parent" value="">
+
+        <!-- 身份選擇 -->
+        <div class="identity-row">
+            <span class="identity-label"><i class="bi bi-person me-1"></i>以身份發言：</span>
+            <div class="identity-toggle">
+                <input type="radio" name="identity" id="id-named" value="named" checked onchange="updatePreview()">
+                <label for="id-named"><i class="bi bi-person-fill me-1"></i>具名</label>
+                <input type="radio" name="identity" id="id-anon"  value="anon"  onchange="updatePreview()">
+                <label for="id-anon"><i class="bi bi-incognito me-1"></i>匿名</label>
+            </div>
+            <span class="identity-preview" id="identity-preview">
+                顯示為：<span class="pv-name" id="preview-name"><?= htmlspecialchars($my_name) ?></span>
+            </span>
+        </div>
+        <!-- 匿名時送出此 hidden checkbox -->
+        <input type="checkbox" name="is_anonymous" id="anon-flag" style="display:none">
+
         <textarea class="fc" name="content" id="cmt-textarea"
                   rows="4" placeholder="輸入您的留言..." required></textarea>
         <button type="submit" class="btn-sub"><i class="bi bi-send me-2"></i>送出留言</button>
@@ -506,6 +559,14 @@ body{font-family:"Microsoft JhengHei",sans-serif;background:#f0f2f5;min-height:1
 <div id="toast-msg"></div>
 
 <script>
+const MY_NAME = <?= je($_SESSION['nickname'] ?? $_SESSION['username'] ?? '') ?>;
+
+function updatePreview() {
+    const isAnon = document.getElementById('id-anon').checked;
+    document.getElementById('preview-name').textContent = isAnon ? '匿名使用者' : MY_NAME;
+    document.getElementById('anon-flag').checked = isAnon;
+}
+
 function openModal(id)  { document.getElementById(id).classList.add('active'); }
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 document.querySelectorAll('.modal-overlay').forEach(el => {
