@@ -41,8 +41,7 @@ $stmt->execute([$newStatus, $user_id]);
 
 echo json_encode([
     "success" => true,
-    "old" => $user["notification_enabled"],
-    "new" => $newStatus
+    "notification_enabled" => $newStatus
 ]);
 
 exit;

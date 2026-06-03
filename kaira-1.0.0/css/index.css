@@ -552,7 +552,7 @@ footer {
   margin: 0 auto;
   padding: 2rem 2rem 4rem;
   min-height: calc(100vh - 60px - 330px);
-  font-family: 'Noto Sans TC', sans-serif;
+  font-family: 'Noto Serif TC', serif;
 }
 
 .empty-notification {

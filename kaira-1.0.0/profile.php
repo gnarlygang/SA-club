@@ -565,21 +565,64 @@ $notifyEnabled = !empty($user["notification_enabled"]);
           </div>
         </div>
 
-        <!-- 通知設定（單獨一列，不破壞結構） -->
-        <div class="notify-row">
-          <div>
-            <div class="info-label">通知設定</div>
-            <div class="info-value" id="notify-status">
-              <?= $notifyEnabled ? "已開啟通知" : "未開啟通知" ?>
-            </div>
-          </div>
-          <button type="button"
-                  class="notify-btn <?= $notifyEnabled ? 'on' : 'off' ?>"
-                  id="notify-toggle-btn"
-                  data-enabled="<?= $notifyEnabled ? '1' : '0' ?>">
-            <?= $notifyEnabled ? "關閉通知" : "開啟通知" ?>
-          </button>
-        </div>
+
+<div class="notification-toggle-box">
+  <div class="notification-text">
+    <div class="info-label">通知設定</div>
+    <div class="info-value" id="notify-status">
+      <?= !empty($user["notification_enabled"]) ? "已開啟通知" : "未開啟通知" ?>
+    </div>
+  </div>
+
+
+
+
+  <button
+    type="button"
+    class="notify-toggle-btn <?= !empty($user["notification_enabled"]) ? 'on' : 'off' ?>"
+    id="notify-toggle-btn"
+    data-enabled="<?= !empty($user["notification_enabled"]) ? '1' : '0' ?>"
+  >
+    <?= !empty($user["notification_enabled"]) ? "關閉通知" : "開啟通知" ?>
+  </button>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const notifyBtn = document.getElementById("notify-toggle-btn");
+  const notifyStatus = document.getElementById("notify-status");
+
+  if (!notifyBtn) return;
+
+  notifyBtn.addEventListener("click", function () {
+    fetch("/SA-club/kaira-1.0.0/api/toggle_notification.php", {
+      method: "POST"
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (!data.success) {
+        alert(data.message || "通知設定更新失敗");
+        return;
+      }
+
+      const enabled = Number(data.notification_enabled) === 1;
+
+      notifyBtn.dataset.enabled = enabled ? "1" : "0";
+      notifyBtn.textContent = enabled ? "關閉通知" : "開啟通知";
+
+      notifyBtn.classList.remove("on", "off");
+      notifyBtn.classList.add(enabled ? "on" : "off");
+
+      if (notifyStatus) {
+        notifyStatus.textContent = enabled ? "已開啟通知" : "未開啟通知";
+      }
+    })
+    .catch(() => {
+      alert("通知設定連線失敗");
+    });
+  });
+});
+</script>
 
         <!-- 左側導覽 -->
         <div class="profile-nav">
