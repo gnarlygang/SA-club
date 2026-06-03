@@ -197,7 +197,7 @@ a { text-decoration: none; }
   margin: 0 auto;
   padding: 2.5rem 2rem;
   display: grid;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: minmax(0, 1fr) 320px;
   gap: 2rem;
   align-items: start;
 }
@@ -231,7 +231,7 @@ a { text-decoration: none; }
 .activities-block, .forum-block { margin-bottom: 2.5rem; }
 .activities-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 1rem;
 }
 .act-card {
