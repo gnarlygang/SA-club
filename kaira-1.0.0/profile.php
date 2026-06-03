@@ -551,6 +551,27 @@ function buildUrl($club_id, $sort_by, $order) {
           </div>
         </div>
 
+
+<div class="notification-toggle-box">
+  <div class="notification-text">
+    <div class="info-label">通知設定</div>
+    <div class="info-value" id="notify-status">
+      <?= !empty($user["notification_enabled"]) ? "已開啟通知" : "未開啟通知" ?>
+    </div>
+  </div>
+
+  <button
+    type="button"
+    class="notify-toggle-btn <?= !empty($user["notification_enabled"]) ? 'on' : 'off' ?>"
+    id="notify-toggle-btn"
+    data-enabled="<?= !empty($user["notification_enabled"]) ? '1' : '0' ?>"
+  >
+    <?= !empty($user["notification_enabled"]) ? "關閉通知" : "開啟通知" ?>
+  </button>
+</div>
+
+
+
         <!-- Nav buttons -->
         <div class="profile-nav">
           <button class="pnav-btn" id="btn-subscriptions" onclick="showPanel('subscriptions', this)">
@@ -917,5 +938,48 @@ function removeFavorite(btn) {
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
 <?php require_once "footer.php"; ?>
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const notifyBtn = document.getElementById("notify-toggle-btn");
+    const status = document.getElementById("notify-status");
+
+    if (!notifyBtn) return;
+
+    notifyBtn.addEventListener("click", function () {
+        fetch("/SA-club/kaira-1.0.0/api/toggle_notification.php", {
+            method: "POST"
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success) {
+                alert(data.message || "通知設定更新失敗");
+                return;
+            }
+
+            const enabled = Number(data.new) === 1;
+
+            notifyBtn.dataset.enabled = enabled ? "1" : "0";
+            notifyBtn.textContent = enabled ? "關閉通知" : "開啟通知";
+
+            notifyBtn.classList.remove("on", "off");
+            notifyBtn.classList.add(enabled ? "on" : "off");
+
+            if (status) {
+                status.textContent = enabled ? "已開啟通知" : "未開啟通知";
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert("fetch 失敗");
+        });
+    });
+});
+</script>
+
+
+
+
 </body>
 </html>

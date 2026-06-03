@@ -53,4 +53,5 @@
       天主教輔仁大學 © 2014-2026 版權所有
     </div>
   </div>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </footer>

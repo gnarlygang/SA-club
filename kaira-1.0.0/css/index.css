@@ -547,5 +547,20 @@ footer {
   .footer-bottom { flex-direction: column; align-items: flex-start; }
 }
 
+.notification-page {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 2rem 2rem 4rem;
+  min-height: calc(100vh - 60px - 330px);
+}
 
+.empty-notification {
+  background: #fff;
+  border: 1px solid rgba(26,39,68,0.10);
+  border-radius: 14px;
+  padding: 3rem;
+  text-align: center;
+  color: #8a91a8;
+  margin-top: 2rem;
+}
 

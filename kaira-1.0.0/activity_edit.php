@@ -2,6 +2,7 @@
 session_start();
 
 require_once "api/db.php";
+require_once "api/notification_service.php";
 
 $error      = "";
 $activity_id = isset($_GET["id"]) ? (int)$_GET["id"] : (isset($_POST["activity_id"]) ? (int)$_POST["activity_id"] : 0);
@@ -61,6 +62,78 @@ try {
                 ":id"       => $activity_id,
                 ":uid"      => $_SESSION["user_id"] ?? null,
             ]);
+
+
+            $eventKey = "activity_update_" . $activity_id . "_" . date("YmdHis");
+
+
+
+            if ($stmt->rowCount() > 0) {
+$baseUrl = "http://localhost/SA-club/kaira-1.0.0";
+
+$activity_id = (int)$activity_id;
+
+$safeTitle = htmlspecialchars(
+    (string)$title,
+    ENT_QUOTES,
+    "UTF-8"
+);
+
+$activityUrl =
+    $baseUrl .
+    "/activity_view.php?id=" .
+    $activity_id;
+
+$subject = "活動已更新";
+
+$body = "
+<h2>活動更新通知</h2>
+
+<p>
+活動
+<strong>{$safeTitle}</strong>
+已有更新。
+</p>
+
+<p>
+<a href='{$activityUrl}'>
+查看活動
+</a>
+</p>
+
+
+";
+    notifyActivityFavorites(
+    $pdo,
+    $activity_id,
+    $subject,
+    $body,
+    "activity_updated",
+    $eventKey
+);
+
+    $clubStmt = $pdo->prepare("
+        SELECT c.id AS club_id
+        FROM activities a
+        JOIN clubs c ON a.user_id = c.user_id
+        WHERE a.id = ?
+    ");
+    $clubStmt->execute([$activity_id]);
+    $club = $clubStmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($club) {
+        notifyClubSubscribers(
+            $pdo,
+            $club['club_id'],
+            $activity_id,
+            $subject,
+            $body,
+            "club_activity_updated",
+            $eventKey
+        );
+    }
+}
+
 
             header("Location: activity_list.php");
             exit;

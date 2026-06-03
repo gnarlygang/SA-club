@@ -44,6 +44,22 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 ':id' => $id
             ]);
 
+            require_once __DIR__ . "/notification_service.php";
+            $subject = "系統公告更新通知";
+            $body = "
+                <h2>系統公告更新</h2>
+                <p><strong>{$title}</strong></p>
+                <p>{$content}</p>
+            ";
+
+            notifyAllUsers(
+                $pdo,
+                $id,
+                $subject,
+                $body,
+                "announcement_updated"
+            );
+
             header("Location: ann_detail.php?id=" . urlencode($id));
             exit;
 

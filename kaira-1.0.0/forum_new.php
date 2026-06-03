@@ -67,7 +67,7 @@ require_once "header.php";
 
   <style>
     :root {
-      --footer-bg: #afbac7;
+      --footer-bg: #1a2744;
       --card-shadow: 0 4px 24px rgba(60,80,120,0.10);
       --input-border: #c8d0dc;
       --btn-bg: #2d2d2d;

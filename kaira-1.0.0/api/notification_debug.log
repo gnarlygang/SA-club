@@ -1,0 +1,161 @@
+[2026-05-24 07:53:46] 進入 notifyActivityFavorites，activity_id = 5
+[2026-05-24 08:12:28] 無效 email：1402432
+[2026-05-24 08:12:32] 無效 email：1402434
+[2026-05-24 08:16:37] 無效 email：1402432
+[2026-05-24 08:16:42] 無效 email：1402434
+[2026-05-27 09:20:32] 全站公告通知人數：2
+[2026-05-27 09:20:38] 通知成功：user_id=1010, email=0000@gmail.com, type=announcement_created
+[2026-05-27 09:20:44] 通知成功：user_id=412402608, email=momo930210@gmail.com, type=announcement_created
+[2026-05-27 09:26:18] 進入 notifyActivityFavorites，activity_id=5
+[2026-05-27 09:26:18] 活動收藏通知人數：2
+[2026-05-27 09:26:18] 略過重複通知：user_id=412402074, type=activity_updated, ref=5
+[2026-05-27 09:26:18] 略過重複通知：user_id=412402608, type=activity_updated, ref=5
+[2026-05-27 09:26:18] 社團訂閱通知人數：0
+[2026-05-27 09:27:01] 進入 notifyActivityFavorites，activity_id=5
+[2026-05-27 09:27:01] 活動收藏通知人數：2
+[2026-05-27 09:27:01] 略過重複通知：user_id=412402074, type=activity_updated, ref=5
+[2026-05-27 09:27:01] 略過重複通知：user_id=412402608, type=activity_updated, ref=5
+[2026-05-27 09:27:01] 社團訂閱通知人數：0
+[2026-05-27 09:30:38] 進入 notifyActivityFavorites，activity_id=5
+[2026-05-27 09:30:38] 活動收藏通知人數：2
+[2026-05-27 09:30:38] 略過重複通知：user_id=412402074, type=activity_updated, ref=5
+[2026-05-27 09:30:38] 略過重複通知：user_id=412402608, type=activity_updated, ref=5
+[2026-05-27 09:30:38] 社團訂閱通知人數：0
+[2026-05-27 09:32:06] 進入 notifyActivityFavorites，activity_id=5
+[2026-05-27 09:32:06] 活動收藏通知人數：2
+[2026-05-27 09:32:06] 略過重複通知：user_id=412402074, type=activity_updated, ref=5
+[2026-05-27 09:32:06] 略過重複通知：user_id=412402608, type=activity_updated, ref=5
+[2026-05-27 09:32:06] 社團訂閱通知人數：0
+[2026-05-27 09:37:11] 進入 notifyActivityFavorites，activity_id=5
+[2026-05-27 09:37:11] 活動收藏通知人數：2
+[2026-05-27 09:37:11] 略過重複通知：user_id=412402074, type=activity_updated, ref=5
+[2026-05-27 09:37:11] 略過重複通知：user_id=412402608, type=activity_updated, ref=5
+[2026-05-27 09:37:11] 社團訂閱通知人數：0
+[2026-05-27 09:52:44] 進入 notifyActivityFavorites，activity_id=5
+[2026-05-27 09:57:10] 進入 notifyActivityFavorites，activity_id=5
+[2026-05-27 09:59:12] 進入 notifyActivityFavorites，activity_id=5
+[2026-05-27 09:59:12] 活動收藏通知人數：2
+[2026-05-27 10:02:09] 進入 notifyActivityFavorites，activity_id=5
+[2026-05-27 10:02:09] 活動收藏通知人數：2
+[2026-05-27 10:02:14] 通知成功：user_id=412402074, email=chengengxie0717@gmail.com, type=activity_updated_20260527100209
+[2026-05-27 10:02:19] 通知成功：user_id=412402608, email=momo930210@gmail.com, type=activity_updated_20260527100209
+[2026-05-27 10:02:19] 社團訂閱通知人數：0
+[2026-05-31 06:38:21] 進入 notifyActivityFavorites，activity_id=5
+[2026-05-31 06:38:21] 活動收藏通知人數：0
+[2026-05-31 06:38:21] 社團訂閱通知人數：0
+[2026-05-31 06:49:35] 進入 notifyActivityFavorites，activity_id=5
+[2026-05-31 06:49:35] 活動收藏通知人數：1
+[2026-05-31 06:49:40] 通知成功：user_id=412402608, email=momo930210@gmail.com, type=activity_updated
+[2026-05-31 06:49:40] 社團訂閱通知人數：0
+[2026-05-31 07:16:50] 進入 notifyActivityFavorites，activity_id=5
+[2026-05-31 07:16:50] 活動收藏通知人數：1
+[2026-05-31 07:16:55] 通知成功：user_id=412402608, email=momo930210@gmail.com, type=activity_updated
+[2026-05-31 07:16:55] 社團訂閱通知人數：0
+[2026-05-31 07:46:39] 社團訂閱通知人數：1
+[2026-05-31 07:57:02] 通知成功：user_id=412402608, email=momo930210@gmail.com, type=club_activity_created
+[2026-05-31 08:01:46] 全站公告通知人數：3
+[2026-05-31 08:01:50] 通知成功：user_id=1010, email=0000@gmail.com, type=announcement_created
+[2026-05-31 08:01:55] 通知成功：user_id=1401049, email=1404049@cloud.fju.edu.tw, type=announcement_created
+[2026-05-31 08:02:00] 通知成功：user_id=412402608, email=momo930210@gmail.com, type=announcement_created
+[2026-06-02 09:21:03] 通知成功：user_id=412402608, email=momo930210@gmail.com, type=club_activity_created
+[2026-06-02 09:27:27] 進入 notifyActivityFavorites，activity_id=37
+[2026-06-02 09:27:27] 活動收藏通知人數：0
+[2026-06-02 09:27:33] 通知成功：user_id=412402608, email=momo930210@gmail.com, type=club_activity_updated
+[2026-06-02 09:34:28] 通知成功：user_id=412402608, email=momo930210@gmail.com, type=club_activity_created
+[2026-06-02 15:46:42] 進入 notifyActivityFavorites，activity_id=37
+[2026-06-02 15:46:42] 活動收藏通知人數：0
+[2026-06-02 15:46:46] 通知成功：user_id=412402608, email=momo930210@gmail.com, type=club_activity_deadline
+[2026-06-02 15:46:46] 進入 notifyActivityFavorites，activity_id=38
+[2026-06-02 15:46:46] 活動收藏通知人數：0
+[2026-06-02 15:46:51] 通知成功：user_id=412402608, email=momo930210@gmail.com, type=club_activity_deadline
+[2026-06-02 16:16:32] 通知成功：user_id=412402608, email=momo930210@gmail.com, type=activity_start_reminder
+[2026-06-02 11:17:25] 通知成功：user_id=412402608, email=momo930210@gmail.com, type=club_activity_created
+[2026-06-02 11:19:35] 通知成功：user_id=412402608, email=momo930210@gmail.com, type=club_activity_created
+[2026-06-02 11:21:47] 通知成功：user_id=412402608, email=momo930210@gmail.com, type=club_activity_created
+[2026-06-02 17:44:30] 進入 notifyActivityFavorites，activity_id=37
+[2026-06-02 17:44:30] 活動收藏通知人數：0
+[2026-06-02 17:44:30] 略過重複通知：user_id=412402608, type=club_activity_deadline, target=activity:37, event=club_activity_deadline_37_20260602
+[2026-06-02 17:44:30] 進入 notifyActivityFavorites，activity_id=38
+[2026-06-02 17:44:30] 活動收藏通知人數：0
+[2026-06-02 17:44:30] 略過重複通知：user_id=412402608, type=club_activity_deadline, target=activity:38, event=club_activity_deadline_38_20260602
+[2026-06-02 17:44:30] 進入 notifyActivityFavorites，activity_id=39
+[2026-06-02 17:44:30] 活動收藏通知人數：0
+[2026-06-02 17:44:34] 進入 notifyActivityFavorites，activity_id=40
+[2026-06-02 17:44:34] 活動收藏通知人數：0
+[2026-06-02 17:44:39] 進入 notifyActivityFavorites，activity_id=41
+[2026-06-02 17:44:39] 活動收藏通知人數：0
+[2026-06-02 17:44:43] 進入 notifyActivityFavorites，activity_id=42
+[2026-06-02 17:44:43] 活動收藏通知人數：0
+[2026-06-02 17:44:47] 進入 notifyActivityFavorites，activity_id=43
+[2026-06-02 17:44:47] 活動收藏通知人數：0
+[2026-06-02 17:49:02] 進入 notifyActivityFavorites，activity_id=37
+[2026-06-02 17:49:02] 活動收藏通知人數：0
+[2026-06-02 17:49:02] 略過重複通知：user_id=412402608, type=club_activity_deadline, target=activity:37, event=club_activity_deadline_37_20260602
+[2026-06-02 17:49:02] 進入 notifyActivityFavorites，activity_id=38
+[2026-06-02 17:49:02] 活動收藏通知人數：0
+[2026-06-02 17:49:02] 略過重複通知：user_id=412402608, type=club_activity_deadline, target=activity:38, event=club_activity_deadline_38_20260602
+[2026-06-02 17:49:02] 進入 notifyActivityFavorites，activity_id=39
+[2026-06-02 17:49:02] 活動收藏通知人數：0
+[2026-06-02 17:49:02] 略過重複通知：user_id=412402608, type=club_activity_deadline, target=activity:39, event=club_activity_deadline_39_20260602
+[2026-06-02 17:49:02] 進入 notifyActivityFavorites，activity_id=40
+[2026-06-02 17:49:02] 活動收藏通知人數：0
+[2026-06-02 17:49:02] 略過重複通知：user_id=412402608, type=club_activity_deadline, target=activity:40, event=club_activity_deadline_40_20260602
+[2026-06-02 17:49:02] 進入 notifyActivityFavorites，activity_id=41
+[2026-06-02 17:49:02] 活動收藏通知人數：0
+[2026-06-02 17:49:02] 略過重複通知：user_id=412402608, type=club_activity_deadline, target=activity:41, event=club_activity_deadline_41_20260602
+[2026-06-02 17:49:02] 進入 notifyActivityFavorites，activity_id=42
+[2026-06-02 17:49:02] 活動收藏通知人數：0
+[2026-06-02 17:49:02] 略過重複通知：user_id=412402608, type=club_activity_deadline, target=activity:42, event=club_activity_deadline_42_20260602
+[2026-06-02 17:49:02] 進入 notifyActivityFavorites，activity_id=43
+[2026-06-02 17:49:02] 活動收藏通知人數：0
+[2026-06-02 17:49:02] 略過重複通知：user_id=412402608, type=club_activity_deadline, target=activity:43, event=club_activity_deadline_43_20260602
+[2026-06-02 17:51:48] 進入 notifyActivityFavorites，activity_id=37
+[2026-06-02 17:51:48] 活動收藏通知人數：0
+[2026-06-02 17:51:48] 略過重複通知：user_id=412402608, type=club_activity_deadline, target=activity:37, event=club_activity_deadline_37_20260602
+[2026-06-02 17:51:48] 進入 notifyActivityFavorites，activity_id=38
+[2026-06-02 17:51:48] 活動收藏通知人數：0
+[2026-06-02 17:51:48] 略過重複通知：user_id=412402608, type=club_activity_deadline, target=activity:38, event=club_activity_deadline_38_20260602
+[2026-06-02 17:51:48] 進入 notifyActivityFavorites，activity_id=39
+[2026-06-02 17:51:48] 活動收藏通知人數：0
+[2026-06-02 17:51:48] 略過重複通知：user_id=412402608, type=club_activity_deadline, target=activity:39, event=club_activity_deadline_39_20260602
+[2026-06-02 17:51:48] 進入 notifyActivityFavorites，activity_id=40
+[2026-06-02 17:51:48] 活動收藏通知人數：0
+[2026-06-02 17:51:48] 略過重複通知：user_id=412402608, type=club_activity_deadline, target=activity:40, event=club_activity_deadline_40_20260602
+[2026-06-02 17:51:48] 進入 notifyActivityFavorites，activity_id=41
+[2026-06-02 17:51:48] 活動收藏通知人數：0
+[2026-06-02 17:51:48] 略過重複通知：user_id=412402608, type=club_activity_deadline, target=activity:41, event=club_activity_deadline_41_20260602
+[2026-06-02 17:51:48] 進入 notifyActivityFavorites，activity_id=42
+[2026-06-02 17:51:48] 活動收藏通知人數：0
+[2026-06-02 17:51:48] 略過重複通知：user_id=412402608, type=club_activity_deadline, target=activity:42, event=club_activity_deadline_42_20260602
+[2026-06-02 17:51:48] 進入 notifyActivityFavorites，activity_id=43
+[2026-06-02 17:51:48] 活動收藏通知人數：0
+[2026-06-02 17:51:48] 略過重複通知：user_id=412402608, type=club_activity_deadline, target=activity:43, event=club_activity_deadline_43_20260602
+[2026-06-02 17:51:48] 進入 notifyActivityFavorites，activity_id=44
+[2026-06-02 17:51:48] 活動收藏通知人數：0
+[2026-06-02 11:57:09] 略過重複通知：user_id=412402608, type=club_activity_created, target=activity:45, event=club_activity_created_45_20260602115705
+[2026-06-02 17:57:18] 進入 notifyActivityFavorites，activity_id=37
+[2026-06-02 17:57:18] 活動收藏通知人數：0
+[2026-06-02 17:57:18] 略過重複通知：user_id=412402608, type=club_activity_deadline, target=activity:37, event=club_activity_deadline_37_20260602
+[2026-06-02 17:57:18] 進入 notifyActivityFavorites，activity_id=38
+[2026-06-02 17:57:18] 活動收藏通知人數：0
+[2026-06-02 17:57:18] 略過重複通知：user_id=412402608, type=club_activity_deadline, target=activity:38, event=club_activity_deadline_38_20260602
+[2026-06-02 17:57:18] 進入 notifyActivityFavorites，activity_id=39
+[2026-06-02 17:57:18] 活動收藏通知人數：0
+[2026-06-02 17:57:18] 略過重複通知：user_id=412402608, type=club_activity_deadline, target=activity:39, event=club_activity_deadline_39_20260602
+[2026-06-02 17:57:18] 進入 notifyActivityFavorites，activity_id=40
+[2026-06-02 17:57:18] 活動收藏通知人數：0
+[2026-06-02 17:57:18] 略過重複通知：user_id=412402608, type=club_activity_deadline, target=activity:40, event=club_activity_deadline_40_20260602
+[2026-06-02 17:57:18] 進入 notifyActivityFavorites，activity_id=41
+[2026-06-02 17:57:18] 活動收藏通知人數：0
+[2026-06-02 17:57:18] 略過重複通知：user_id=412402608, type=club_activity_deadline, target=activity:41, event=club_activity_deadline_41_20260602
+[2026-06-02 17:57:18] 進入 notifyActivityFavorites，activity_id=42
+[2026-06-02 17:57:18] 活動收藏通知人數：0
+[2026-06-02 17:57:18] 略過重複通知：user_id=412402608, type=club_activity_deadline, target=activity:42, event=club_activity_deadline_42_20260602
+[2026-06-02 17:57:18] 進入 notifyActivityFavorites，activity_id=43
+[2026-06-02 17:57:18] 活動收藏通知人數：0
+[2026-06-02 17:57:18] 略過重複通知：user_id=412402608, type=club_activity_deadline, target=activity:43, event=club_activity_deadline_43_20260602
+[2026-06-02 17:57:18] 進入 notifyActivityFavorites，activity_id=44
+[2026-06-02 17:57:18] 活動收藏通知人數：0
+[2026-06-02 17:57:18] 略過重複通知：user_id=412402608, type=club_activity_deadline, target=activity:44, event=club_activity_deadline_44_20260602
+[2026-06-02 17:57:18] 進入 notifyActivityFavorites，activity_id=45
+[2026-06-02 17:57:18] 活動收藏通知人數：0

@@ -1,5 +1,6 @@
 <?php
 require_once "api/db.php"; 
+require_once "api/notification_service.php";
 
 // --- 處理邏輯區 ---
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -18,6 +19,31 @@ if (!empty($title) && !empty($content) && !empty($detail)) {
             ':content' => $content,
             ':detail' => $detail
         ]);
+
+        $announcement_id = $pdo->lastInsertId();
+
+        $subject = "系統公告新增通知";
+
+        $body = "
+            <h2>系統公告新增</h2>
+            <p><strong>{$title}</strong></p>
+            <p>{$content}</p>
+        ";
+
+        $announcementUrl = "http://localhost/SA-club/kaira-1.0.0/announcement_detail.php?id=" . $announcement_id;
+
+$eventKey = "announcement_created_" . $announcement_id . "_" . date("YmdHis");
+
+notifyAllUsers(
+    $pdo,
+    "announcement",
+    $announcement_id,
+    $subject,
+    $body,
+    "announcement_created",
+    $announcementUrl,
+    $eventKey
+);
 
         echo "<script>alert('✅ 公告已成功發佈！'); window.location.href = 'index.php';</script>";
         exit;

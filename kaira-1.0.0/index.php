@@ -873,6 +873,77 @@ footer {
   </div>
 </div>
 
+
+
+<?php if (isset($_SESSION['user_id'])): ?>
+
+<script>
+
+fetch("api/check_notification_status.php")
+    .then(res => res.json())
+    .then(data => {
+
+        if (!data.notification_enabled) {
+
+            Swal.fire({
+
+                title: '🔔 通知設定',
+
+                html: `
+                    <div style="text-align:left">
+                        是否願意接收：
+                        <br><br>
+
+                        • 活動更新通知<br>
+                        • 系統公告通知<br>
+                        • 收藏提醒通知
+                    </div>
+                `,
+
+                icon: 'info',
+
+                showCancelButton: true,
+
+                confirmButtonText: '接受通知',
+
+                cancelButtonText: '稍後再說',
+
+                allowOutsideClick: false
+
+            }).then((result) => {
+
+                if (result.isConfirmed) {
+
+                    fetch("api/enable_notification.php", {
+
+                        method: "POST"
+
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: '通知已開啟'
+                        });
+
+                    });
+
+                }
+
+            });
+
+        }
+
+    });
+
+</script>
+
+<?php endif; ?>
+
+
+
+
 <?php require_once __DIR__ . "/footer.php"; ?>
 
 </body>

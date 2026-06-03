@@ -1,0 +1,37 @@
+.notification-toggle-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid #f0f3f7;
+}
+
+.notification-toggle-box .notification-text {
+  min-width: 0;
+}
+
+.notify-toggle-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 7px 13px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .2s, color .2s;
+}
+
+.notify-toggle-btn.on {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.notify-toggle-btn.off {
+  background: var(--accent2);
+  color: var(--accent);
+}
+
+.notify-toggle-btn:hover {
+  opacity: .85;
+}

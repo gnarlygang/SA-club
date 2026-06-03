@@ -2,6 +2,7 @@
 session_start();
 
 require_once "api/db.php";
+require_once __DIR__ . "/api/notification_service.php";
 $error = "";
 
 try {
@@ -68,6 +69,70 @@ try {
                 ":deadline" => $signup_deadline,
             ]);
             $new_id = $pdo->lastInsertId();
+
+
+
+$activity_id = $pdo->lastInsertId();
+
+$activityUrl = "http://localhost/SA-club/kaira-1.0.0/activity_view.php?id=" . $activity_id;
+
+$eventKey = "club_activity_created_" . $activity_id . "_" . date("YmdHis");
+
+$subject = "你訂閱的社團發布了新活動";
+
+$body = "
+<h2>社團新活動通知</h2>
+<p>你訂閱的社團發布了新活動：<strong>{$title}</strong></p>
+<p>請點擊下方按鈕查看活動內容。</p>
+<a href='{$activityUrl}'>
+查看活動
+</a>
+";
+
+$clubStmt = $pdo->prepare("
+    SELECT c.id
+    FROM clubs c
+    JOIN activities a ON a.user_id = c.user_id
+    WHERE a.id = ?
+    LIMIT 1
+");
+
+$clubStmt->execute([$activity_id]);
+$club = $clubStmt->fetch(PDO::FETCH_ASSOC);
+
+
+$activityUrl = "http://localhost/SA-club/kaira-1.0.0/activity_view.php?id=" . $activity_id;
+$eventKey = "club_activity_created_" . $activity_id . "_" . date("YmdHis");
+
+notifyClubSubscribers(
+    $pdo,
+    $club["id"],
+    $activity_id,
+    $subject,
+    $body,
+    "club_activity_created",
+    $activityUrl,
+    $eventKey
+);
+
+
+
+
+if ($club) {
+    notifyClubSubscribers(
+        $pdo,
+        $club["id"],
+        $activity_id,
+        $subject,
+        $body,
+        "club_activity_created",
+        $activityUrl,
+        $eventKey
+    );
+}
+
+
+
             header("Location: activity_view.php?id=" . $new_id);
             exit;
         }

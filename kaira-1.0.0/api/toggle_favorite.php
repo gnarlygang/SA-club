@@ -1,4 +1,9 @@
 <?php
+
+ini_set('display_errors', 0);
+error_reporting(E_ALL);
+header("Content-Type: application/json; charset=utf-8");
+
 session_start();
 require_once "db.php";
 
@@ -73,6 +78,7 @@ if ($favorite) {
         "message" => "已取消收藏"
     ], JSON_UNESCAPED_UNICODE);
 } else {
+    require_once "notification_helper.php";
     $stmt = $pdo->prepare("
         INSERT INTO favorites (user_id, item_type, item_id)
         VALUES (?, ?, ?)
@@ -84,5 +90,21 @@ if ($favorite) {
         "favorited" => true,
         "message" => "已加入收藏"
     ], JSON_UNESCAPED_UNICODE);
+
+        /* 發送收藏成功通知 */
+    $stmt = $pdo->prepare("SELECT email FROM users WHERE user_id = ?");
+    $stmt->execute([$user_id]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($user && !empty($user['email'])) {
+        sendNotificationMail($user['email'], "favorite", [
+            "item_type" => $type_text,
+            "title" => $item['title']
+        ]);
 }
+}
+
+
+
+
 ?>

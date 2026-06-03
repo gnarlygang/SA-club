@@ -17,6 +17,7 @@ $username = $_SESSION['username'] ?? '';
     <link rel="stylesheet" href="css/forum.css">
     <link rel="stylesheet" href="css/index.css">
     <link rel="stylesheet" href="css/navbar.css">
+    <link rel="stylesheet" href="css/profilebutton.css">
     <style>
         .nav-username {
             color: #ffffff !important;
@@ -42,26 +43,31 @@ $username = $_SESSION['username'] ?? '';
             <li><a href="clubs.php">社團介紹</a></li>
             <li><a href="activities.php">活動</a></li>
             <li><a href="forum.php">論壇</a></li>
+            <li><a href="notifications.php">通知</a></li>
         <?php elseif ($role == 3): ?>
             <li><a href="index.php">首頁</a></li>
             <li><a href="clubs.php">社團介紹</a></li>
             <li><a href="activities.php">活動</a></li>
             <li><a href="forum.php">論壇</a></li>
+            <li><a href="notifications.php">通知</a></li>
         <?php elseif ($role == 2): ?>
             <li><a href="index.php">首頁</a></li>
             <li><a href="create_club.php">社團後台</a></li>
             <li><a href="activity_create.php">發布活動</a></li>
             <li><a href="activity_list.php">活動管理</a></li>
             <li><a href="forum.php">論壇</a></li>
+            <li><a href="notifications.php">通知</a></li>
         <?php elseif ($role == 4): ?>
             <li><a href="index.php">首頁</a></li>
             <li><a href="announcement.php">發布公告</a></li>
             <li><a href="forum.php">論壇</a></li>
+            <li><a href="notifications.php">通知</a></li>
         <?php elseif ($role == 1): ?>
             <li><a href="index.php">首頁</a></li>
             <li><a href="clubs.php">社團介紹</a></li>
             <li><a href="activities.php">活動</a></li>
             <li><a href="forum.php">論壇</a></li>
+            <li><a href="notifications.php">通知</a></li>
         <?php endif; ?>
     </ul>
 
