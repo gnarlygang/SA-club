@@ -323,7 +323,7 @@ $notifyEnabled = !empty($user["notification_enabled"]);
 
     /* ── Subscription layout ── */
     .sub-layout {
-      display: grid; grid-template-columns: 220px 1fr;
+      display: grid; grid-template-columns: 220px minmax(0, 1fr);
       background: var(--card-bg);
       border-radius: 0 0 var(--radius) var(--radius);
       box-shadow: var(--shadow); overflow: hidden;
@@ -363,13 +363,38 @@ $notifyEnabled = !empty($user["notification_enabled"]);
     .side-link:hover { background: var(--bg); color: var(--navy); }
     .side-link.active { background: var(--navy); color: #fff; font-weight: 700; }
 
-    .sub-main { padding: 20px 24px; overflow-y: auto; max-height: 75vh; }
-    .sort-box { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+    .sub-main { padding: 20px 24px; overflow-y: auto; overflow-x: hidden; max-height: 75vh; min-width: 0; }
+
+    /* 右邊排序按鈕：強制同一排 */
+    .sort-box {
+      display: flex !important;
+      flex-direction: row !important;
+      flex-wrap: nowrap !important;
+      align-items: center !important;
+      gap: 8px !important;
+      margin-bottom: 20px !important;
+      width: 100% !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      padding-bottom: 4px !important;
+    }
     .sort-box a {
-      font-size: 12px; padding: 6px 13px; border-radius: 999px; text-decoration: none;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      white-space: nowrap !important;
+      flex: 0 0 auto !important;
+      font-size: 12px !important;
+      padding: 8px 12px !important;
+      border-radius: 999px !important;
+      text-decoration: none !important;
       background: var(--bg); color: var(--muted); border: 1px solid var(--border); transition: background .2s, color .2s;
     }
-    .sort-box a.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+    .sort-box a.active { background: var(--navy) !important; color: #fff !important; border-color: var(--navy) !important; }
+
+    /* 全部訂閱社團下面的文字：白色 */
+    .all-club-link .club-text strong { color: #ffffff !important; }
+    .all-club-link .club-text p { color: rgba(255,255,255,.78) !important; }
 
     .activity-list { display: flex; flex-direction: column; gap: 14px; }
     .activity-card {
@@ -505,10 +530,7 @@ $notifyEnabled = !empty($user["notification_enabled"]);
 
         <div class="info-row">
           <div class="info-icon"><i class="bi bi-person-fill"></i></div>
-          <div>
-            <div class="info-label">姓名</div>
-            <div class="info-value"><?= htmlspecialchars($user["username"]) ?></div>
-          </div>
+          
           <div>
             <div class="info-label">姓名</div>
             <div class="info-value"><?= htmlspecialchars($user["username"]) ?></div>
@@ -529,10 +551,6 @@ $notifyEnabled = !empty($user["notification_enabled"]);
 
         <div class="info-row">
           <div class="info-icon"><i class="bi bi-envelope-fill"></i></div>
-          <div>
-            <div class="info-label">電子信箱</div>
-            <div class="info-value"><?= htmlspecialchars($user["email"]) ?></div>
-          </div>
           <div>
             <div class="info-label">電子信箱</div>
             <div class="info-value"><?= htmlspecialchars($user["email"]) ?></div>
@@ -644,11 +662,11 @@ $notifyEnabled = !empty($user["notification_enabled"]);
           </a>
           <?php foreach ($clubs as $club): ?>
             <a href="javascript:void(0)"
-               class="side-club <?= $club_id == $club['id'] ? 'active' : '' ?>"
+               class="side-club all-club-link <?= $club_id == $club['id'] ? 'active' : '' ?>"
                data-club="<?= htmlspecialchars($club['id']) ?>">
               <div class="club-text">
-                <strong><?= htmlspecialchars($club['name']) ?></strong>
-                <p><?= htmlspecialchars($club['category'] ?? '') ?></p>
+                <strong style="color:#ffffff !important;"><?= htmlspecialchars($club['name']) ?></strong>
+                <p style="color:rgba(255,255,255,.78) !important;"><?= htmlspecialchars($club['category'] ?? '') ?></p>
               </div>
             </a>
           <?php endforeach; ?>
@@ -658,24 +676,24 @@ $notifyEnabled = !empty($user["notification_enabled"]);
         </aside>
 
         <div class="sub-main">
-          <div class="sort-box" id="sort-box">
+          <div class="sort-box" id="sort-box" style="display:flex !important; flex-wrap:nowrap !important; gap:8px !important; align-items:center !important; overflow-x:auto !important; width:100% !important;">
             <a href="javascript:void(0)" data-sort="created" data-order="desc"
-               class="sort-link <?= $sort_by==='created'&&$order==='desc' ? 'active' : '' ?>">
+               style="white-space:nowrap !important; flex:0 0 auto !important; padding:8px 12px !important; font-size:12px !important;" class="sort-link <?= $sort_by==='created'&&$order==='desc' ? 'active' : '' ?>">
               發布日期：近到遠
             </a>
 
             <a href="javascript:void(0)" data-sort="created" data-order="asc"
-               class="sort-link <?= $sort_by==='created'&&$order==='asc' ? 'active' : '' ?>">
+               style="white-space:nowrap !important; flex:0 0 auto !important; padding:8px 12px !important; font-size:12px !important;" class="sort-link <?= $sort_by==='created'&&$order==='asc' ? 'active' : '' ?>">
               發布日期：遠到近
             </a>
 
             <a href="javascript:void(0)" data-sort="event" data-order="desc"
-               class="sort-link <?= $sort_by==='event'&&$order==='desc' ? 'active' : '' ?>">
+               style="white-space:nowrap !important; flex:0 0 auto !important; padding:8px 12px !important; font-size:12px !important;" class="sort-link <?= $sort_by==='event'&&$order==='desc' ? 'active' : '' ?>">
               活動時間：近到遠
             </a>
 
             <a href="javascript:void(0)" data-sort="event" data-order="asc"
-               class="sort-link <?= $sort_by==='event'&&$order==='asc' ? 'active' : '' ?>">
+               style="white-space:nowrap !important; flex:0 0 auto !important; padding:8px 12px !important; font-size:12px !important;" class="sort-link <?= $sort_by==='event'&&$order==='asc' ? 'active' : '' ?>">
               活動時間：遠到近
             </a>
           </div>
