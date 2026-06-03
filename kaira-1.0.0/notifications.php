@@ -4,7 +4,12 @@ session_start();
 require_once "api/db.php";
 
 if (!isset($_SESSION["user_id"])) {
-    exit("請先登入");
+
+    $_SESSION["redirect_after_login"] =
+        $_SERVER["REQUEST_URI"];
+
+    header("Location: login.php");
+    exit;
 }
 
 $user_id = $_SESSION["user_id"];

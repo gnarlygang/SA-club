@@ -21,29 +21,36 @@ if (!empty($title) && !empty($content) && !empty($detail)) {
         ]);
 
         $announcement_id = $pdo->lastInsertId();
+        $announcementUrl = "http://localhost/SA-club/kaira-1.0.0/ann_detail.php?id=" . $announcement_id;
 
         $subject = "系統公告新增通知";
 
         $body = "
             <h2>系統公告新增</h2>
-            <p><strong>{$title}</strong></p>
-            <p>{$content}</p>
+            <p>系統發布新公告：<strong>{$title}</strong></p>
+<p>請點擊下方按鈕查看公告內容。</p>
+            <a href='{$announcementUrl}'>
+查看公告
+</a>
         ";
 
-        $announcementUrl = "http://localhost/SA-club/kaira-1.0.0/announcement_detail.php?id=" . $announcement_id;
 
 $eventKey = "announcement_created_" . $announcement_id . "_" . date("YmdHis");
 
-notifyAllUsers(
-    $pdo,
-    "announcement",
-    $announcement_id,
-    $subject,
-    $body,
-    "announcement_created",
-    $announcementUrl,
-    $eventKey
-);
+try {
+    notifyAllUsers(
+        $pdo,
+        "announcement",
+        $announcement_id,
+        $subject,
+        $body,
+        "announcement_created",
+        $announcementUrl,
+        $eventKey
+    );
+} catch (Throwable $e) {
+    error_log("公告通知失敗：" . $e->getMessage());
+}
 
         echo "<script>alert('✅ 公告已成功發佈！'); window.location.href = 'index.php';</script>";
         exit;

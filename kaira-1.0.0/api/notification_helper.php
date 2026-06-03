@@ -47,10 +47,8 @@ function sendNotificationMail($to, $subject, $body)
 
 return $result;
 
-    } catch (Exception $e) {
-    echo "<pre>";
-    echo "Mailer Error: " . $mail->ErrorInfo;
-    echo "</pre>";
+    } catch (\Exception $e) {
+    error_log("Mailer Error: " . $mail->ErrorInfo);
     return false;
 }
 }

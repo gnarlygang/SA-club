@@ -32,6 +32,20 @@ function sendOnce(
     $url = null,
     $event_key = null
 ) {
+
+    $stmt = $pdo->prepare("
+    SELECT role
+    FROM users
+    WHERE user_id = ?
+");
+$stmt->execute([$user_id]);
+
+$role = $stmt->fetchColumn();
+
+if ($role == 4) {
+    return false;
+}
+
     $email = trim((string)$email);
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -100,14 +114,20 @@ function sendOnce(
         $url
     ]);
 
-    echo "notification_logs 寫入成功";
+ 
     return true;
 
 } catch (PDOException $e) {
-    echo "<pre>";
-    echo "notification_logs 寫入失敗：";
-    echo $e->getMessage();
-    echo "</pre>";
+
+    file_put_contents(
+        __DIR__ . "/notification_error.log",
+        date("Y-m-d H:i:s") .
+        " | notification_logs 寫入失敗 | " .
+        $e->getMessage() .
+        PHP_EOL,
+        FILE_APPEND
+    );
+
     return false;
 }
 
@@ -189,6 +209,10 @@ function notifyClubSubscribers($pdo, $club_id, $target_id, $subject, $body, $not
 }
 function notifyAllUsers($pdo, $target_type, $target_id, $subject, $body, $notification_type, $url = null, $event_key = null)
 {
+
+$announcement_id = $target_id;
+$announcementUrl = $url;
+
     $stmt = $pdo->prepare("
     SELECT user_id, email
     FROM users

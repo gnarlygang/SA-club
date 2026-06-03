@@ -61,7 +61,6 @@ $username = $_SESSION['username'] ?? '';
             <li><a href="index.php">首頁</a></li>
             <li><a href="announcement.php">發布公告</a></li>
             <li><a href="forum.php">論壇</a></li>
-            <li><a href="notifications.php">通知</a></li>
         <?php elseif ($role == 1): ?>
             <li><a href="index.php">首頁</a></li>
             <li><a href="clubs.php">社團介紹</a></li>
