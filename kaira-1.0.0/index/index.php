@@ -241,7 +241,6 @@ if ($uid) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FJU_CLUB - 天主教輔仁大學社團平台</title>
 
-<link rel="stylesheet" href="css/index.css">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
 
 <style>
@@ -440,12 +439,11 @@ a { text-decoration: none; }
 
 /* MAIN */
 .main-wrap {
-  max-width: 960px;
-  width: 100%;
+  max-width: 1080px;
   margin: 0 auto;
   padding: 2.5rem 2rem;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
+  grid-template-columns: 580px 320px;
   gap: 2rem;
   align-items: start;
 }
@@ -725,7 +723,7 @@ footer {
   margin-top: 1rem;
 }
 .footer-top {
-  max-width: 960px;
+  max-width: 1080px;
   margin: 0 auto;
   padding: 2.5rem 2rem 2rem;
   display: grid;
@@ -755,7 +753,7 @@ footer {
 .foot-col ul li a:hover { color: #fff; }
 .footer-bottom {
   border-top: 1px solid rgba(255,255,255,0.08);
-  max-width: 960px;
+  max-width: 1080px;
   margin: 0 auto;
   padding: 1.5rem 2rem;
   display: flex;
@@ -962,30 +960,37 @@ footer {
   <div class="sidebar">
 
     <!-- Announcements -->
-    <div class="sidebar-card">
-      <div class="sidebar-card-header">
-        <h3>系統公告</h3>
-        <a href="ann_list.php" class="see-all" style="color:rgba(255,255,255,0.6);font-size:0.75rem;">查看全部 →</a>
-      </div>
-      <div class="sidebar-card-body">
-        <?php if (!empty($announcements)): ?>
-          <?php foreach ($announcements as $ann): ?>
-            <a href="ann_detail.php?id=<?= h($ann['id']) ?>" class="ann-link">
-              <div class="ann-item">
-                <span class="ann-tag sys">公告</span>
-                <h4><?= h($ann['title']) ?></h4>
-                <p><?= h(shortText($ann['content'], 32)) ?></p>
-                <div class="ann-date"><?= h(fmtDate($ann['date'])) ?></div>
-              </div>
-            </a>
-          <?php endforeach; ?>
-        <?php else: ?>
+<div class="sidebar-card-header">
+  <h3>系統公告</h3>
+  <a href="ann_list.php" class="see-all ">查看全部 →</a>
+</div>
+
+  <div class="sidebar-card-body">
+    <?php if (!empty($announcements)): ?>
+      <?php foreach ($announcements as $ann): ?>
+
+        <a href="ann_detail.php?id=<?= h($ann['id']) ?>" class="ann-link">
           <div class="ann-item">
-            <h4>目前沒有公告</h4>
+            <span class="ann-tag sys">公告</span>
+
+            <h4><?= h($ann['title']) ?></h4>
+
+            <p><?= h(shortText($ann['content'], 32)) ?></p>
+
+            <div class="ann-date">
+              <?= h(fmtDate($ann['date'])) ?>
+            </div>
           </div>
-        <?php endif; ?>
+        </a>
+
+      <?php endforeach; ?>
+    <?php else: ?>
+      <div class="ann-item">
+        <h4>目前沒有公告</h4>
       </div>
-    </div>
+    <?php endif; ?>
+  </div>
+</div>
 
     <!-- Hot clubs -->
     <div class="sidebar-card">
@@ -1028,77 +1033,6 @@ footer {
 
   </div>
 </div>
-
-
-
-<?php if (isset($_SESSION['user_id'])): ?>
-
-<script>
-
-fetch("api/check_notification_status.php")
-    .then(res => res.json())
-    .then(data => {
-
-        if (!data.notification_enabled) {
-
-            Swal.fire({
-
-                title: '🔔 通知設定',
-
-                html: `
-                    <div style="text-align:left">
-                        是否願意接收：
-                        <br><br>
-
-                        • 活動更新通知<br>
-                        • 系統公告通知<br>
-                        • 收藏提醒通知
-                    </div>
-                `,
-
-                icon: 'info',
-
-                showCancelButton: true,
-
-                confirmButtonText: '接受通知',
-
-                cancelButtonText: '稍後再說',
-
-                allowOutsideClick: false
-
-            }).then((result) => {
-
-                if (result.isConfirmed) {
-
-                    fetch("api/enable_notification.php", {
-
-                        method: "POST"
-
-                    })
-                    .then(res => res.json())
-                    .then(data => {
-
-                        Swal.fire({
-                            icon: 'success',
-                            title: '通知已開啟'
-                        });
-
-                    });
-
-                }
-
-            });
-
-        }
-
-    });
-
-</script>
-
-<?php endif; ?>
-
-
-
 
 <?php require_once __DIR__ . "/footer.php"; ?>
 
