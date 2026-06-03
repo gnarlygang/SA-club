@@ -231,6 +231,45 @@ document.getElementById("modalContent").innerHTML = html;
 
 </main>
 <?php require_once "footer.php"; ?>
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const notifyBtn = document.getElementById("notify-toggle-btn");
+  const notifyStatus = document.getElementById("notify-status");
+
+  if (!notifyBtn) return;
+
+  notifyBtn.addEventListener("click", function () {
+    fetch("/SA-club/kaira-1.0.0/api/toggle_notification.php", {
+      method: "POST"
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (!data.success) {
+        alert(data.message || "通知設定更新失敗");
+        return;
+      }
+
+      const enabled = Number(data.notification_enabled) === 1;
+
+      notifyBtn.dataset.enabled = enabled ? "1" : "0";
+      notifyBtn.textContent = enabled ? "關閉通知" : "開啟通知";
+
+      notifyBtn.classList.remove("on", "off");
+      notifyBtn.classList.add(enabled ? "on" : "off");
+
+      notifyStatus.textContent = enabled ? "已開啟通知" : "未開啟通知";
+    })
+    .catch(error => {
+      console.error(error);
+      alert("無法連線到通知設定 API");
+    });
+  });
+});
+</script>
+
+
 </body>
 
 </html>
