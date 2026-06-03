@@ -99,7 +99,7 @@ body{
 <body>
 <?php require_once "header.php"; ?>
 <class="notification-page">
-<h2 class="mb-4">通知中心</h2>
+<h2>通知中心</h2>
 
 <?php if (count($notifications) > 0): ?>
 

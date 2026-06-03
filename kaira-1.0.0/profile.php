@@ -494,15 +494,6 @@ footer { background: #1a2744; color: #333; padding: 14px 0; text-align: center; 
     </div>
   </div>
 
-  <button
-    type="button"
-    class="notify-toggle-btn <?= !empty($user["notification_enabled"]) ? 'on' : 'off' ?>"
-    id="notify-toggle-btn"
-    data-enabled="<?= !empty($user["notification_enabled"]) ? '1' : '0' ?>"
-  >
-    <?= !empty($user["notification_enabled"]) ? "關閉通知" : "開啟通知" ?>
-  </button>
-</div>
 
 
 
