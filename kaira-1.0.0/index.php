@@ -440,11 +440,12 @@ a { text-decoration: none; }
 
 /* MAIN */
 .main-wrap {
-  max-width: 1080px;
+  max-width: 960px;
+  width: 100%;
   margin: 0 auto;
   padding: 2.5rem 2rem;
   display: grid;
-  grid-template-columns: 580px 320px;
+  grid-template-columns: minmax(0, 1fr) 300px;
   gap: 2rem;
   align-items: start;
 }
@@ -724,7 +725,7 @@ footer {
   margin-top: 1rem;
 }
 .footer-top {
-  max-width: 1080px;
+  max-width: 960px;
   margin: 0 auto;
   padding: 2.5rem 2rem 2rem;
   display: grid;
@@ -754,7 +755,7 @@ footer {
 .foot-col ul li a:hover { color: #fff; }
 .footer-bottom {
   border-top: 1px solid rgba(255,255,255,0.08);
-  max-width: 1080px;
+  max-width: 960px;
   margin: 0 auto;
   padding: 1.5rem 2rem;
   display: flex;
@@ -961,37 +962,30 @@ footer {
   <div class="sidebar">
 
     <!-- Announcements -->
-<div class="sidebar-card-header">
-  <h3>系統公告</h3>
-  <a href="ann_list.php" class="see-all ">查看全部 →</a>
-</div>
-
-  <div class="sidebar-card-body">
-    <?php if (!empty($announcements)): ?>
-      <?php foreach ($announcements as $ann): ?>
-
-        <a href="ann_detail.php?id=<?= h($ann['id']) ?>" class="ann-link">
-          <div class="ann-item">
-            <span class="ann-tag sys">公告</span>
-
-            <h4><?= h($ann['title']) ?></h4>
-
-            <p><?= h(shortText($ann['content'], 32)) ?></p>
-
-            <div class="ann-date">
-              <?= h(fmtDate($ann['date'])) ?>
-            </div>
-          </div>
-        </a>
-
-      <?php endforeach; ?>
-    <?php else: ?>
-      <div class="ann-item">
-        <h4>目前沒有公告</h4>
+    <div class="sidebar-card">
+      <div class="sidebar-card-header">
+        <h3>系統公告</h3>
+        <a href="ann_list.php" class="see-all" style="color:rgba(255,255,255,0.6);font-size:0.75rem;">查看全部 →</a>
       </div>
-    <?php endif; ?>
-  </div>
-</div>
+      <div class="sidebar-card-body">
+        <?php if (!empty($announcements)): ?>
+          <?php foreach ($announcements as $ann): ?>
+            <a href="ann_detail.php?id=<?= h($ann['id']) ?>" class="ann-link">
+              <div class="ann-item">
+                <span class="ann-tag sys">公告</span>
+                <h4><?= h($ann['title']) ?></h4>
+                <p><?= h(shortText($ann['content'], 32)) ?></p>
+                <div class="ann-date"><?= h(fmtDate($ann['date'])) ?></div>
+              </div>
+            </a>
+          <?php endforeach; ?>
+        <?php else: ?>
+          <div class="ann-item">
+            <h4>目前沒有公告</h4>
+          </div>
+        <?php endif; ?>
+      </div>
+    </div>
 
     <!-- Hot clubs -->
     <div class="sidebar-card">
