@@ -26,21 +26,25 @@ try {
     $order   = $_GET['order']   ?? 'desc';
 
     if ($sort_by === 'event') {
-        $orderBy = ($order === 'desc')
-            ? "CASE WHEN a.event_start >= NOW() THEN 0 ELSE 1 END ASC,
-               CASE WHEN a.event_start >= NOW() THEN a.event_start END ASC,
-               CASE WHEN a.event_start < NOW() THEN a.event_start END DESC"
-            : "CASE WHEN a.event_start >= NOW() THEN 0 ELSE 1 END ASC,
-               CASE WHEN a.event_start >= NOW() THEN a.event_start END DESC,
-               CASE WHEN a.event_start < NOW() THEN a.event_start END DESC";
+        if ($order === 'desc') {
+            $orderBy = "CASE WHEN a.event_start >= NOW() THEN 0 ELSE 1 END ASC,
+                        CASE WHEN a.event_start >= NOW() THEN a.event_start END ASC,
+                        CASE WHEN a.event_start < NOW() THEN a.event_start END DESC";
+        } else {
+            $orderBy = "CASE WHEN a.event_start >= NOW() THEN 0 ELSE 1 END ASC,
+                        CASE WHEN a.event_start >= NOW() THEN a.event_start END DESC,
+                        CASE WHEN a.event_start < NOW() THEN a.event_start END DESC";
+        }
     } else {
         $orderBy = ($order === 'desc') ? "a.created_at DESC" : "a.created_at ASC";
     }
 
     $stmt = $pdo->prepare("
-        SELECT c.* FROM subscriptions s
+        SELECT c.* 
+        FROM subscriptions s
         JOIN clubs c ON s.club_id = c.id
-        WHERE s.user_id = ? ORDER BY c.category ASC, c.name ASC
+        WHERE s.user_id = ? 
+        ORDER BY c.category ASC, c.name ASC
     ");
     $stmt->execute([$user_id]);
     $clubs = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -53,29 +57,49 @@ try {
 
     $where  = "";
     $params = [$user_id];
-    if ($club_id !== '') { $where .= " AND c.id = ?"; $params[] = $club_id; }
+
+    if ($club_id !== '') {
+        $where .= " AND c.id = ?";
+        $params[] = $club_id;
+    }
 
     $stmt = $pdo->prepare("
-        SELECT a.*, c.id AS club_id, c.name AS club_name,
-               c.category AS club_category, c.image AS club_image
+        SELECT 
+            a.*, 
+            c.id AS club_id, 
+            c.name AS club_name, 
+            c.category AS club_category, 
+            c.image AS club_image
         FROM subscriptions s
         JOIN clubs c ON s.club_id = c.id
         JOIN activities a ON a.user_id = c.user_id
-        WHERE s.user_id = ? $where ORDER BY $orderBy
+        WHERE s.user_id = ? $where 
+        ORDER BY $orderBy
     ");
     $stmt->execute($params);
     $activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     /* ── 收藏：活動 ── */
     $stmt = $pdo->prepare("
-        SELECT f.id AS favorite_id, f.created_at AS favorited_at,
-               a.id, a.title, a.description, a.event_start, a.signup_deadline,
-               a.location, a.fee, a.organizer,
-               c.name AS club_name, c.category AS club_category, c.image AS club_image
+        SELECT 
+            f.id AS favorite_id, 
+            f.created_at AS favorited_at,
+            a.id, 
+            a.title, 
+            a.description, 
+            a.event_start, 
+            a.signup_deadline, 
+            a.location, 
+            a.fee, 
+            a.organizer,
+            c.name AS club_name, 
+            c.category AS club_category, 
+            c.image AS club_image
         FROM favorites f
         JOIN activities a ON f.item_id = a.id
         LEFT JOIN clubs c ON c.user_id = a.user_id
-        WHERE f.user_id = ? AND f.item_type = 'activity'
+        WHERE f.user_id = ? 
+          AND f.item_type = 'activity'
         ORDER BY f.created_at DESC
     ");
     $stmt->execute([$user_id]);
@@ -83,14 +107,22 @@ try {
 
     /* ── 收藏：貼文 ── */
     $stmt = $pdo->prepare("
-        SELECT f.id AS favorite_id, f.created_at AS favorited_at,
-               fp.id, fp.title, fp.content, fp.created_at,
-               fc.name AS category_name, u.username, u.nickname
+        SELECT 
+            f.id AS favorite_id, 
+            f.created_at AS favorited_at,
+            fp.id, 
+            fp.title, 
+            fp.content, 
+            fp.created_at,
+            fc.name AS category_name, 
+            u.username, 
+            u.nickname
         FROM favorites f
         JOIN forum_posts fp ON f.item_id = fp.id
         LEFT JOIN forum_categories fc ON fp.category_id = fc.id
         LEFT JOIN users u ON fp.user_id = u.user_id
-        WHERE f.user_id = ? AND f.item_type = 'post'
+        WHERE f.user_id = ? 
+          AND f.item_type = 'post'
         ORDER BY f.created_at DESC
     ");
     $stmt->execute([$user_id]);
@@ -140,6 +172,8 @@ $recordCountRejected = $recordCountConfirmed = 0;
 $nowTime = time();
 
 foreach ($activityRecords as $r) {
+    $nowTime = time();
+
     if (!empty($r['event_end'])) {
         $isEnded = strtotime($r['event_end']) < $nowTime;
     } elseif (!empty($r['event_start'])) {
@@ -156,6 +190,7 @@ foreach ($activityRecords as $r) {
 
 $notifyEnabled = !empty($user["notification_enabled"]);
 ?>
+
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
@@ -442,12 +477,12 @@ $notifyEnabled = !empty($user["notification_enabled"]);
     }
   </style>
 </head>
+
 <body>
 <?php require_once "header.php"; ?>
 
 <div class="page-body">
 
-  <!-- ════ LEFT: Profile Card ════ -->
   <aside class="profile-col">
     <div class="profile-card">
       <div class="profile-card-header">
@@ -457,16 +492,23 @@ $notifyEnabled = !empty($user["notification_enabled"]);
 
       <div class="profile-card-body">
         <div class="avatar-wrap">
-          <img src="<?= htmlspecialchars($avatar) ?>" alt="頭像"
+          <img src="<?= htmlspecialchars($avatar) ?>"
+               alt="頭像"
                onerror="this.src='https://ui-avatars.com/api/?name=User&size=150&background=2d3a4a&color=fff'">
         </div>
 
         <div class="text-center mb-3">
-          <span class="role-badge"><?= ($role_icons[$user["role"]] ?? "") . " " . $role_label ?></span>
+          <span class="role-badge">
+            <?= ($role_icons[$user["role"]] ?? "") . " " . $role_label ?>
+          </span>
         </div>
 
         <div class="info-row">
           <div class="info-icon"><i class="bi bi-person-fill"></i></div>
+          <div>
+            <div class="info-label">姓名</div>
+            <div class="info-value"><?= htmlspecialchars($user["username"]) ?></div>
+          </div>
           <div>
             <div class="info-label">姓名</div>
             <div class="info-value"><?= htmlspecialchars($user["username"]) ?></div>
@@ -487,6 +529,10 @@ $notifyEnabled = !empty($user["notification_enabled"]);
 
         <div class="info-row">
           <div class="info-icon"><i class="bi bi-envelope-fill"></i></div>
+          <div>
+            <div class="info-label">電子信箱</div>
+            <div class="info-value"><?= htmlspecialchars($user["email"]) ?></div>
+          </div>
           <div>
             <div class="info-label">電子信箱</div>
             <div class="info-value"><?= htmlspecialchars($user["email"]) ?></div>
@@ -550,16 +596,17 @@ $notifyEnabled = !empty($user["notification_enabled"]);
   <!-- ════ RIGHT: Content ════ -->
   <div class="right-col">
 
-    <!-- Welcome -->
     <div class="panel active" id="panel-welcome">
       <div class="welcome-panel">
         <div class="welcome-icon">👋</div>
         <h2>歡迎，<?= htmlspecialchars($user["nickname"] ?: $user["username"]) ?>！</h2>
-        <p>點選左側選單，查看訂閱的社團活動、收藏內容，或已報名的活動紀錄。</p>
+        <p>
+          點選左側選單，可以查看你訂閱的社團活動、收藏內容<br>
+          或是你已報名的活動紀錄。
+        </p>
       </div>
     </div>
 
-    <!-- Subscriptions -->
     <div class="panel" id="panel-subscriptions">
       <div class="panel-header">
         <span class="panel-icon">🔔</span>
@@ -573,6 +620,7 @@ $notifyEnabled = !empty($user["notification_enabled"]);
               <button type="button" class="category-title">
                 <?= htmlspecialchars($cat) ?>（<?= count($catClubs) ?>）
               </button>
+
               <div class="category-clubs">
                 <?php foreach ($catClubs as $club): ?>
                   <a href="javascript:void(0)"
@@ -589,6 +637,7 @@ $notifyEnabled = !empty($user["notification_enabled"]);
           <?php endforeach; ?>
 
           <div class="sidebar-divider"></div>
+
           <h3>全部訂閱社團</h3>
           <a href="javascript:void(0)" class="side-link <?= $club_id === '' ? 'active' : '' ?>" data-club="">
             全部社團
@@ -611,18 +660,30 @@ $notifyEnabled = !empty($user["notification_enabled"]);
         <div class="sub-main">
           <div class="sort-box" id="sort-box">
             <a href="javascript:void(0)" data-sort="created" data-order="desc"
-               class="sort-link <?= $sort_by==='created'&&$order==='desc' ? 'active' : '' ?>">發布日期：近到遠</a>
+               class="sort-link <?= $sort_by==='created'&&$order==='desc' ? 'active' : '' ?>">
+              發布日期：近到遠
+            </a>
+
             <a href="javascript:void(0)" data-sort="created" data-order="asc"
-               class="sort-link <?= $sort_by==='created'&&$order==='asc' ? 'active' : '' ?>">發布日期：遠到近</a>
+               class="sort-link <?= $sort_by==='created'&&$order==='asc' ? 'active' : '' ?>">
+              發布日期：遠到近
+            </a>
+
             <a href="javascript:void(0)" data-sort="event" data-order="desc"
-               class="sort-link <?= $sort_by==='event'&&$order==='desc' ? 'active' : '' ?>">活動時間：近到遠</a>
+               class="sort-link <?= $sort_by==='event'&&$order==='desc' ? 'active' : '' ?>">
+              活動時間：近到遠
+            </a>
+
             <a href="javascript:void(0)" data-sort="event" data-order="asc"
-               class="sort-link <?= $sort_by==='event'&&$order==='asc' ? 'active' : '' ?>">活動時間：遠到近</a>
+               class="sort-link <?= $sort_by==='event'&&$order==='asc' ? 'active' : '' ?>">
+              活動時間：遠到近
+            </a>
           </div>
 
           <div class="activity-list" id="activity-list">
             <?php
             $now = date('Y-m-d H:i:s');
+
             if (count($activities) > 0):
               foreach ($activities as $a):
                 $eventStart = $a['event_start'] ?? null;
@@ -633,16 +694,35 @@ $notifyEnabled = !empty($user["notification_enabled"]);
                 $isToday    = !empty($eventStart) && date('Y-m-d', strtotime($eventStart)) === date('Y-m-d');
                 $isUpcoming = !empty($eventStart) && strtotime($eventStart) > strtotime($now);
             ?>
+
               <div class="activity-card <?= $isExpired ? 'expired' : '' ?>"
                    data-club="<?= htmlspecialchars($a['club_id']) ?>">
                 <div class="activity-content">
                   <h4><?= htmlspecialchars($a['title'] ?? '未命名活動') ?></h4>
-                  <p><strong><?= htmlspecialchars($a['club_name'] ?? '') ?></strong>
-                    <?php if (!empty($a['club_category'])): ?> ／<?= htmlspecialchars($a['club_category']) ?><?php endif; ?></p>
-                  <?php if (!empty($a['created_at'])): ?><p>發布日期：<?= htmlspecialchars($a['created_at']) ?></p><?php endif; ?>
-                  <?php if (!empty($a['event_start'])): ?><p>活動開始：<?= htmlspecialchars($a['event_start']) ?></p><?php endif; ?>
-                  <?php if (!empty($a['event_end'])):   ?><p>活動結束：<?= htmlspecialchars($a['event_end']) ?></p><?php endif; ?>
-                  <?php if (!empty($a['location'])):    ?><p>地點：<?= htmlspecialchars($a['location']) ?></p><?php endif; ?>
+
+                  <p>
+                    <strong><?= htmlspecialchars($a['club_name'] ?? '') ?></strong>
+                    <?php if (!empty($a['club_category'])): ?>
+                      ／<?= htmlspecialchars($a['club_category']) ?>
+                    <?php endif; ?>
+                  </p>
+
+                  <?php if (!empty($a['created_at'])): ?>
+                    <p>發布日期：<?= htmlspecialchars($a['created_at']) ?></p>
+                  <?php endif; ?>
+
+                  <?php if (!empty($a['event_start'])): ?>
+                    <p>活動開始：<?= htmlspecialchars($a['event_start']) ?></p>
+                  <?php endif; ?>
+
+                  <?php if (!empty($a['event_end'])): ?>
+                    <p>活動結束：<?= htmlspecialchars($a['event_end']) ?></p>
+                  <?php endif; ?>
+
+                  <?php if (!empty($a['location'])): ?>
+                    <p>地點：<?= htmlspecialchars($a['location']) ?></p>
+                  <?php endif; ?>
+
                   <?php if ($isExpired): ?>
                     <span class="tag expired">已結束</span>
                   <?php elseif ($isToday): ?>
@@ -652,15 +732,17 @@ $notifyEnabled = !empty($user["notification_enabled"]);
                   <?php endif; ?>
                 </div>
               </div>
+
             <?php endforeach; else: ?>
+
               <div class="empty-box">目前沒有符合條件的訂閱活動。</div>
+
             <?php endif; ?>
           </div>
         </div>
       </div>
     </div><!-- /panel-subscriptions -->
 
-    <!-- Favorites -->
     <div class="panel" id="panel-favorites">
       <div class="panel-header">
         <span class="panel-icon">❤️</span>
@@ -672,6 +754,7 @@ $notifyEnabled = !empty($user["notification_enabled"]);
           <button class="fav-tab-btn active" onclick="showFavTab('activities', this)">
             活動收藏 <?= count($activityFavorites) ?>
           </button>
+
           <button class="fav-tab-btn" onclick="showFavTab('posts', this)">
             貼文收藏 <?= count($postFavorites) ?>
           </button>
@@ -679,10 +762,13 @@ $notifyEnabled = !empty($user["notification_enabled"]);
 
         <div class="fav-section active" id="fav-activities">
           <div class="fav-list">
+
             <?php if (count($activityFavorites) === 0): ?>
               <div class="empty-box">
                 <strong>目前還沒有收藏活動</strong><br>
-                <span>可以到 <a href="activities.php" style="color:var(--accent)">活動頁</a> 看看有沒有感興趣的內容。</span>
+                <span>
+                  可以到 <a href="activities.php" style="color:var(--accent)">活動頁</a> 看看有沒有感興趣的內容。
+                </span>
               </div>
             <?php endif; ?>
             <?php foreach ($activityFavorites as $act): ?>
@@ -691,31 +777,45 @@ $notifyEnabled = !empty($user["notification_enabled"]);
                   <h3><?= htmlspecialchars($act['title'] ?? '未命名活動') ?></h3>
                   <span class="fav-badge">活動</span>
                 </div>
+
                 <div class="fav-meta">
                   社團：<?= htmlspecialchars($act['club_name'] ?? $act['organizer'] ?? '未指定社團') ?>
                   ・活動時間：<?= htmlspecialchars($act['event_start'] ?? '未設定') ?>
                   ・收藏時間：<?= htmlspecialchars($act['favorited_at']) ?>
                 </div>
+
                 <div class="fav-content">
                   <?= nl2br(htmlspecialchars(mb_substr($act['description'] ?? '', 0, 130))) ?>
                   <?= mb_strlen($act['description'] ?? '') > 130 ? '...' : '' ?>
                 </div>
+
                 <div class="fav-actions">
-                  <a href="activity_view.php?id=<?= htmlspecialchars($act['id']) ?>" class="read-btn">查看活動</a>
-                  <button class="remove-fav-btn" data-type="activity" data-id="<?= htmlspecialchars($act['id']) ?>"
-                          onclick="removeFavorite(this)">取消收藏</button>
+                  <a href="activity_view.php?id=<?= htmlspecialchars($act['id']) ?>" class="read-btn">
+                    查看活動
+                  </a>
+
+                  <button class="remove-fav-btn"
+                          data-type="activity"
+                          data-id="<?= htmlspecialchars($act['id']) ?>"
+                          onclick="removeFavorite(this)">
+                    取消收藏
+                  </button>
                 </div>
               </article>
             <?php endforeach; ?>
+
           </div>
         </div>
 
         <div class="fav-section" id="fav-posts">
           <div class="fav-list">
+
             <?php if (count($postFavorites) === 0): ?>
               <div class="empty-box">
                 <strong>目前還沒有收藏貼文</strong><br>
-                <span>可以到 <a href="forum.php" style="color:var(--accent)">論壇頁</a> 看看有沒有感興趣的內容。</span>
+                <span>
+                  可以到 <a href="forum.php" style="color:var(--accent)">論壇頁</a> 看看有沒有感興趣的內容。
+                </span>
               </div>
             <?php endif; ?>
             <?php foreach ($postFavorites as $post):
@@ -726,28 +826,38 @@ $notifyEnabled = !empty($user["notification_enabled"]);
                   <h3><?= htmlspecialchars($post['title'] ?? '未命名貼文') ?></h3>
                   <span class="fav-badge">貼文</span>
                 </div>
+
                 <div class="fav-meta">
                   作者：<?= htmlspecialchars($author) ?>
                   ・看板：<?= htmlspecialchars($post['category_name'] ?? '未分類') ?>
                   ・收藏時間：<?= htmlspecialchars($post['favorited_at']) ?>
                 </div>
+
                 <div class="fav-content">
                   <?= nl2br(htmlspecialchars(mb_substr($post['content'] ?? '', 0, 130))) ?>
                   <?= mb_strlen($post['content'] ?? '') > 130 ? '...' : '' ?>
                 </div>
+
                 <div class="fav-actions">
-                  <a href="forum_post.php?id=<?= htmlspecialchars($post['id']) ?>" class="read-btn">查看貼文</a>
-                  <button class="remove-fav-btn" data-type="post" data-id="<?= htmlspecialchars($post['id']) ?>"
-                          onclick="removeFavorite(this)">取消收藏</button>
+                  <a href="forum_post.php?id=<?= htmlspecialchars($post['id']) ?>" class="read-btn">
+                    查看貼文
+                  </a>
+
+                  <button class="remove-fav-btn"
+                          data-type="post"
+                          data-id="<?= htmlspecialchars($post['id']) ?>"
+                          onclick="removeFavorite(this)">
+                    取消收藏
+                  </button>
                 </div>
               </article>
             <?php endforeach; ?>
+
           </div>
         </div>
       </div>
     </div><!-- /panel-favorites -->
 
-    <!-- Activity Records -->
     <div class="panel" id="panel-records">
       <div class="panel-header">
         <span class="panel-icon">📋</span>
@@ -758,20 +868,43 @@ $notifyEnabled = !empty($user["notification_enabled"]);
           這裡會顯示你已報名的活動、審核狀態與確認參與紀錄。
         </p>
         <div class="record-tabs">
-          <button class="record-tab-btn active" onclick="showRecordTab('all', this)">全部 <?= $recordCountAll ?></button>
-          <button class="record-tab-btn" onclick="showRecordTab('active', this)">未結束 <?= $recordCountActive ?></button>
-          <button class="record-tab-btn" onclick="showRecordTab('ended', this)">已結束 <?= $recordCountEnded ?></button>
-          <button class="record-tab-btn" onclick="showRecordTab('pending', this)">待審核 <?= $recordCountPending ?></button>
-          <button class="record-tab-btn" onclick="showRecordTab('approved', this)">審核通過 <?= $recordCountApproved ?></button>
-          <button class="record-tab-btn" onclick="showRecordTab('rejected', this)">未通過 <?= $recordCountRejected ?></button>
-          <button class="record-tab-btn" onclick="showRecordTab('confirmed', this)">已確認參與 <?= $recordCountConfirmed ?></button>
+          <button class="record-tab-btn active" onclick="showRecordTab('all', this)">
+            全部 <?= $recordCountAll ?>
+          </button>
+
+          <button class="record-tab-btn" onclick="showRecordTab('active', this)">
+            未結束 <?= $recordCountActive ?>
+          </button>
+
+          <button class="record-tab-btn" onclick="showRecordTab('ended', this)">
+            已結束 <?= $recordCountEnded ?>
+          </button>
+
+          <button class="record-tab-btn" onclick="showRecordTab('pending', this)">
+            待審核 <?= $recordCountPending ?>
+          </button>
+
+          <button class="record-tab-btn" onclick="showRecordTab('approved', this)">
+            審核通過 <?= $recordCountApproved ?>
+          </button>
+
+          <button class="record-tab-btn" onclick="showRecordTab('rejected', this)">
+            未通過 <?= $recordCountRejected ?>
+          </button>
+
+          <button class="record-tab-btn" onclick="showRecordTab('confirmed', this)">
+            已確認參與 <?= $recordCountConfirmed ?>
+          </button>
         </div>
 
         <div class="record-list">
+
           <?php if (count($activityRecords) === 0): ?>
             <div class="empty-box">
               <strong>目前還沒有活動紀錄</strong><br>
-              <span>可以到 <a href="activities.php" style="color:var(--accent)">活動頁</a> 報名感興趣的活動。</span>
+              <span>
+                可以到 <a href="activities.php" style="color:var(--accent)">活動頁</a> 報名感興趣的活動。
+              </span>
             </div>
           <?php endif; ?>
 
@@ -795,42 +928,71 @@ $notifyEnabled = !empty($user["notification_enabled"]);
                      data-event-status="<?= htmlspecialchars($eventStatusClass) ?>">
               <div class="record-card-top">
                 <h3><?= htmlspecialchars($record['activity_title'] ?? '未命名活動') ?></h3>
+
                 <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
-                  <span class="record-status <?= htmlspecialchars($eventStatusClass) ?>"><?= htmlspecialchars($eventStatusText) ?></span>
-                  <span class="record-status <?= htmlspecialchars($statusClass) ?>"><?= htmlspecialchars($displayStatus) ?></span>
+                  <span class="record-status <?= htmlspecialchars($eventStatusClass) ?>">
+                    <?= htmlspecialchars($eventStatusText) ?>
+                  </span>
+
+                  <span class="record-status <?= htmlspecialchars($statusClass) ?>">
+                    <?= htmlspecialchars($displayStatus) ?>
+                  </span>
                 </div>
               </div>
               <div class="record-meta">
                 表單：<?= htmlspecialchars($record['form_title'] ?? '未命名表單') ?><br>
                 主辦單位：<?= htmlspecialchars($record['organizer'] ?? '未指定') ?><br>
-                活動時間：<?= htmlspecialchars($record['event_start'] ?? '未設定') ?>
-                <?php if (!empty($record['event_end'])): ?> ～ <?= htmlspecialchars($record['event_end']) ?><?php endif; ?><br>
+
+                活動時間：
+                <?= htmlspecialchars($record['event_start'] ?? '未設定') ?>
+
+                <?php if (!empty($record['event_end'])): ?>
+                  ～ <?= htmlspecialchars($record['event_end']) ?>
+                <?php endif; ?>
+                <br>
+
                 地點：<?= htmlspecialchars($record['location'] ?? '未設定') ?><br>
                 報名時間：<?= htmlspecialchars($record['submitted_at'] ?? '') ?>
                 <?php if (!empty($record['reviewed_at'])): ?> ・審核時間：<?= htmlspecialchars($record['reviewed_at']) ?><?php endif; ?>
               </div>
               <?php if (!empty($record['note'])): ?>
-                <div class="record-note">💬 社團備註：<?= nl2br(htmlspecialchars($record['note'])) ?></div>
+                <div class="record-note">
+                  💬 社團備註：<?= nl2br(htmlspecialchars($record['note'])) ?>
+                </div>
               <?php endif; ?>
               <?php if ($needConfirm): ?>
                 <div class="confirm-record-box">
                   <p>🎉 你的報名已通過，請確認是否參與活動。</p>
+
                   <form method="post" action="form_apply.php?form_id=<?= htmlspecialchars($record['form_id']) ?>">
                     <input type="hidden" name="action" value="confirm">
-                    <button type="submit" class="btn-confirm-record">確認參與</button>
+                    <button type="submit" class="btn-confirm-record">
+                      確認參與
+                    </button>
                   </form>
                 </div>
+
               <?php elseif ($record['confirmed']): ?>
                 <div class="record-note">
-                  ✅ 已確認參與<?php if (!empty($record['confirmed_at'])): ?>：<?= htmlspecialchars($record['confirmed_at']) ?><?php endif; ?>
+                  ✅ 已確認參與
+                  <?php if (!empty($record['confirmed_at'])): ?>
+                    ：<?= htmlspecialchars($record['confirmed_at']) ?>
+                  <?php endif; ?>
                 </div>
               <?php endif; ?>
               <div class="record-actions">
-                <a href="activity_view.php?id=<?= htmlspecialchars($record['activity_id']) ?>" class="read-btn">查看活動</a>
-                <a href="form_apply.php?form_id=<?= htmlspecialchars($record['form_id']) ?>" class="read-btn">查看表單</a>
+                <a href="activity_view.php?id=<?= htmlspecialchars($record['activity_id']) ?>" class="read-btn">
+                  查看活動
+                </a>
+
+                <a href="form_apply.php?form_id=<?= htmlspecialchars($record['form_id']) ?>" class="read-btn">
+                  查看表單
+                </a>
               </div>
             </article>
+
           <?php endforeach; ?>
+
         </div>
       </div>
     </div><!-- /panel-records -->
@@ -842,8 +1004,13 @@ $notifyEnabled = !empty($user["notification_enabled"]);
 function showPanel(name, btn) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.pnav-btn').forEach(b => b.classList.remove('active'));
+
   const panel = document.getElementById('panel-' + name);
-  if (panel) panel.classList.add('active');
+
+  if (panel) {
+    panel.classList.add('active');
+  }
+
   btn.classList.add('active');
 }
 
@@ -856,10 +1023,16 @@ document.querySelectorAll('.category-title').forEach(function(btn) {
 document.querySelectorAll('[data-club]').forEach(function(el) {
   el.addEventListener('click', function() {
     const clubId = this.dataset.club;
+
     document.querySelectorAll('[data-club]').forEach(e => e.classList.remove('active'));
     this.classList.add('active');
+
     document.querySelectorAll('.activity-card').forEach(function(card) {
-      card.style.display = (clubId === '' || card.dataset.club == clubId) ? '' : 'none';
+      if (clubId === '' || card.dataset.club == clubId) {
+        card.style.display = '';
+      } else {
+        card.style.display = 'none';
+      }
     });
   });
 });
@@ -868,52 +1041,78 @@ document.querySelectorAll('.sort-link').forEach(function(link) {
   link.addEventListener('click', function() {
     document.querySelectorAll('.sort-link').forEach(l => l.classList.remove('active'));
     this.classList.add('active');
+
     const sort  = this.dataset.sort;
     const order = this.dataset.order;
     const list  = document.getElementById('activity-list');
     const cards = Array.from(list.querySelectorAll('.activity-card'));
+
     cards.sort(function(a, b) {
-      const da = card_data(a, sort), db = card_data(b, sort);
-      if (!da && !db) return 0; if (!da) return 1; if (!db) return -1;
+      const da = card_data(a, sort);
+      const db = card_data(b, sort);
+
+      if (!da && !db) return 0;
+      if (!da) return 1;
+      if (!db) return -1;
+
       return order === 'desc' ? (da < db ? 1 : -1) : (da > db ? 1 : -1);
     });
+
     cards.forEach(c => list.appendChild(c));
   });
 });
 
 function card_data(card, sort) {
-  const paras  = card.querySelectorAll('.activity-content p');
+  const paras = card.querySelectorAll('.activity-content p');
   const target = sort === 'event' ? '活動開始' : '發布日期';
+
   for (const p of paras) {
     if (p.textContent.startsWith(target)) {
       const m = p.textContent.match(/\d{4}-\d{2}-\d{2}[\s\d:]+/);
       return m ? m[0].trim() : '';
     }
   }
+
   return '';
 }
 
 function showFavTab(type, btn) {
   document.querySelectorAll('.fav-tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.fav-section').forEach(s => s.classList.remove('active'));
+
   btn.classList.add('active');
+
   const tab = document.getElementById('fav-' + type);
-  if (tab) tab.classList.add('active');
+
+  if (tab) {
+    tab.classList.add('active');
+  }
 }
 
 function showRecordTab(status, btn) {
   document.querySelectorAll('.record-tab-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+
   document.querySelectorAll('.record-card').forEach(function(card) {
-    const cs = card.dataset.recordStatus;
-    const es = card.dataset.eventStatus;
-    card.style.display = (status === 'all' || cs === status || es === status) ? '' : 'none';
+    const cardStatus = card.dataset.recordStatus;
+    const eventStatus = card.dataset.eventStatus;
+
+    if (
+      status === 'all' ||
+      cardStatus === status ||
+      eventStatus === status
+    ) {
+      card.style.display = '';
+    } else {
+      card.style.display = 'none';
+    }
   });
 }
 
 function removeFavorite(btn) {
   const itemId   = btn.dataset.id;
   const itemType = btn.dataset.type;
+
   fetch("api/toggle_favorite.php", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
