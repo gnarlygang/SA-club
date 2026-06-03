@@ -34,59 +34,204 @@ function imgOrDefault($url) {
     return $url !== '' ? $url : 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=800&q=80';
 }
 
-/* 統計資料 */
-$clubCount = (int)$pdo->query("SELECT COUNT(*) FROM clubs")->fetchColumn();
+/* ── 統計資料 ── */
+$clubCount    = (int)$pdo->query("SELECT COUNT(*) FROM clubs")->fetchColumn();
 $activityCount = (int)$pdo->query("SELECT COUNT(*) FROM activities")->fetchColumn();
-$userCount = (int)$pdo->query("SELECT COUNT(*) FROM users WHERE role = 3")->fetchColumn();
+$userCount    = (int)$pdo->query("SELECT COUNT(*) FROM users WHERE role = 3")->fetchColumn();
 
-/* 近期精選活動 */
-$featuredActivity = $pdo->query("
-    SELECT *
-    FROM activities
-    WHERE event_start >= NOW()
-    ORDER BY event_start ASC
-    LIMIT 1
-")->fetch(PDO::FETCH_ASSOC);
+$uid = $_SESSION['user_id'] ?? null;
 
-/* 近期活動 */
-$activities = $pdo->query("
-    SELECT *
-    FROM activities
-    ORDER BY event_start ASC
-    LIMIT 4
-")->fetchAll(PDO::FETCH_ASSOC);
+/* ══════════════════════════════════════════════════════
+   精選活動（Hero）
+   登入：找用戶有收藏的活動同社團（subscriptions）中，最近未過期的活動
+   未登入：訂閱數最多社團的最近活動
+══════════════════════════════════════════════════════ */
+if ($uid) {
+    // 用戶訂閱的社團 user_id 清單
+    $featuredActivity = $pdo->prepare("
+        SELECT a.*
+        FROM activities a
+        JOIN clubs c ON c.user_id = a.user_id
+        JOIN subscriptions s ON s.club_id = c.id
+        WHERE s.user_id = :uid
+          AND a.event_start >= NOW()
+        ORDER BY a.event_start ASC
+        LIMIT 1
+    ");
+    $featuredActivity->execute([':uid' => $uid]);
+    $featuredActivity = $featuredActivity->fetch(PDO::FETCH_ASSOC);
 
-/* 系統公告 */
+    // fallback：若訂閱社團無近期活動，改用全局最近活動
+    if (!$featuredActivity) {
+        $featuredActivity = $pdo->query("
+            SELECT * FROM activities WHERE event_start >= NOW()
+            ORDER BY event_start ASC LIMIT 1
+        ")->fetch(PDO::FETCH_ASSOC);
+    }
+} else {
+    // 未登入：訂閱人數最多的社團的最近活動
+    $featuredActivity = $pdo->query("
+        SELECT a.*
+        FROM activities a
+        JOIN clubs c ON c.user_id = a.user_id
+        JOIN (
+            SELECT club_id, COUNT(*) AS sub_cnt
+            FROM subscriptions GROUP BY club_id ORDER BY sub_cnt DESC LIMIT 1
+        ) top ON top.club_id = c.id
+        WHERE a.event_start >= NOW()
+        ORDER BY a.event_start ASC
+        LIMIT 1
+    ")->fetch(PDO::FETCH_ASSOC);
+
+    // fallback
+    if (!$featuredActivity) {
+        $featuredActivity = $pdo->query("
+            SELECT * FROM activities WHERE event_start >= NOW()
+            ORDER BY event_start ASC LIMIT 1
+        ")->fetch(PDO::FETCH_ASSOC);
+    }
+}
+
+/* ══════════════════════════════════════════════════════
+   推薦活動（4 張卡）
+   登入：
+     優先顯示訂閱社團的活動（weight +3）
+     其次是用戶收藏過的活動所屬分類相同的活動（weight +2）
+     基礎分：距今越近的未截止活動分越高
+   未登入：
+     按 (訂閱數×2 + 截止日距今遠近) 排序
+══════════════════════════════════════════════════════ */
+if ($uid) {
+    $activities = $pdo->prepare("
+        SELECT a.*,
+            (
+                -- 訂閱社團加分
+                CASE WHEN EXISTS (
+                    SELECT 1 FROM subscriptions s
+                    JOIN clubs c ON c.id = s.club_id
+                    WHERE s.user_id = :uid1 AND c.user_id = a.user_id
+                ) THEN 3 ELSE 0 END
+                +
+                -- 收藏過同社團活動加分
+                CASE WHEN EXISTS (
+                    SELECT 1 FROM favorites f
+                    JOIN activities fa ON fa.id = f.item_id AND f.item_type = 'activity'
+                    WHERE f.user_id = :uid2 AND fa.user_id = a.user_id
+                ) THEN 2 ELSE 0 END
+            ) AS rec_score
+        FROM activities a
+        WHERE a.signup_deadline >= CURDATE()
+        ORDER BY rec_score DESC, a.event_start ASC
+        LIMIT 4
+    ");
+    $activities->execute([':uid1' => $uid, ':uid2' => $uid]);
+    $activities = $activities->fetchAll(PDO::FETCH_ASSOC);
+} else {
+    $activities = $pdo->query("
+        SELECT a.*,
+            COALESCE((
+                SELECT COUNT(*) FROM subscriptions s
+                JOIN clubs c ON c.id = s.club_id
+                WHERE c.user_id = a.user_id
+            ), 0) * 2 AS rec_score
+        FROM activities a
+        WHERE a.signup_deadline >= CURDATE()
+        ORDER BY rec_score DESC, a.event_start ASC
+        LIMIT 4
+    ")->fetchAll(PDO::FETCH_ASSOC);
+}
+
+/* ── 系統公告 ── */
 $announcements = $pdo->query("
-    SELECT *
-    FROM announcements
-    ORDER BY date DESC
-    LIMIT 3
+    SELECT * FROM announcements ORDER BY date DESC LIMIT 3
 ")->fetchAll(PDO::FETCH_ASSOC);
 
-/* 熱門社團：用 subscriptions 計算追蹤數 */
+/* ══════════════════════════════════════════════════════
+   熱門社團排序公式：
+     訂閱數 × 3
+   + 最近 30 天有活動數 × 2
+   + 若有活動：距最近活動越近加分（最多 +5，線性遞減）
+   總分越高排越前
+══════════════════════════════════════════════════════ */
 $hotClubs = $pdo->query("
-    SELECT 
-        c.id,
-        c.name,
-        c.category,
-        c.image,
-        c.description,
-        COUNT(s.id) AS follower_count
+    SELECT
+        c.id, c.name, c.category, c.image, c.description,
+        COUNT(DISTINCT s.id) AS follower_count,
+        COUNT(DISTINCT CASE
+            WHEN a.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN a.id
+        END) AS recent_act_count,
+        MIN(CASE WHEN a.event_start >= NOW() THEN a.event_start END) AS next_event,
+        (
+            COUNT(DISTINCT s.id) * 3
+            + COUNT(DISTINCT CASE
+                WHEN a.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN a.id
+              END) * 2
+            + COALESCE(
+                GREATEST(0, 5 - FLOOR(
+                    DATEDIFF(MIN(CASE WHEN a.event_start >= NOW() THEN a.event_start END), NOW()) / 7
+                )),
+                0
+              )
+        ) AS hot_score
     FROM clubs c
-    LEFT JOIN subscriptions s ON c.id = s.club_id
+    LEFT JOIN subscriptions s ON s.club_id = c.id
+    LEFT JOIN activities a ON a.user_id = c.user_id
     GROUP BY c.id, c.name, c.category, c.image, c.description
-    ORDER BY follower_count DESC, c.id ASC
+    ORDER BY hot_score DESC, follower_count DESC, c.id ASC
     LIMIT 4
 ")->fetchAll(PDO::FETCH_ASSOC);
 
-/* 論壇貼文 */
-$posts = $pdo->query("
-    SELECT *
-    FROM posts
-    ORDER BY date DESC
-    LIMIT 3
-")->fetchAll(PDO::FETCH_ASSOC);
+/* ══════════════════════════════════════════════════════
+   社團論壇
+   登入：優先推薦用戶收藏過的同分類貼文、以及留言數多的貼文
+   未登入：留言數最多的貼文
+══════════════════════════════════════════════════════ */
+if ($uid) {
+    $posts = $pdo->prepare("
+        SELECT
+            fp.id, fp.title, fp.content, fp.created_at,
+            fc_cat.name AS club_name,
+            u.nickname, u.username,
+            COUNT(DISTINCT fc.id) AS comment_count,
+            (
+                -- 用戶收藏過同分類加分
+                CASE WHEN EXISTS (
+                    SELECT 1 FROM favorites fav
+                    JOIN forum_posts fp2 ON fp2.id = fav.item_id AND fav.item_type = 'post'
+                    WHERE fav.user_id = :uid1 AND fp2.category_id = fp.category_id
+                ) THEN 3 ELSE 0 END
+                + COUNT(DISTINCT fc.id) -- 留言數本身也是分數
+            ) AS rec_score,
+            CASE WHEN COUNT(DISTINCT fc.id) >= 5 THEN 'hot' ELSE 'rec' END AS type
+        FROM forum_posts fp
+        LEFT JOIN forum_categories fc_cat ON fc_cat.id = fp.category_id
+        LEFT JOIN users u ON u.user_id = fp.user_id
+        LEFT JOIN forum_comments fc ON fc.post_id = fp.id AND fc.is_deleted = 0
+        WHERE fp.is_deleted = 0
+        GROUP BY fp.id, fp.title, fp.content, fp.created_at, fc_cat.name, u.nickname, u.username
+        ORDER BY rec_score DESC, fp.created_at DESC
+        LIMIT 3
+    ");
+    $posts->execute([':uid1' => $uid]);
+    $posts = $posts->fetchAll(PDO::FETCH_ASSOC);
+} else {
+    $posts = $pdo->query("
+        SELECT
+            fp.id, fp.title, fp.content, fp.created_at,
+            fc_cat.name AS club_name,
+            u.nickname, u.username,
+            COUNT(DISTINCT fc.id) AS comment_count,
+            CASE WHEN COUNT(DISTINCT fc.id) >= 5 THEN 'hot' ELSE 'rec' END AS type
+        FROM forum_posts fp
+        LEFT JOIN forum_categories fc_cat ON fc_cat.id = fp.category_id
+        LEFT JOIN users u ON u.user_id = fp.user_id
+        LEFT JOIN forum_comments fc ON fc.post_id = fp.id AND fc.is_deleted = 0
+        WHERE fp.is_deleted = 0
+        GROUP BY fp.id, fp.title, fp.content, fp.created_at, fc_cat.name, u.nickname, u.username
+        ORDER BY comment_count DESC, fp.created_at DESC
+        LIMIT 3
+    ")->fetchAll(PDO::FETCH_ASSOC);
+}
 ?>
 
 <!DOCTYPE html>
@@ -96,6 +241,7 @@ $posts = $pdo->query("
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FJU_CLUB - 天主教輔仁大學社團平台</title>
 
+<link rel="stylesheet" href="css/index.css">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
 
 <style>
@@ -298,7 +444,7 @@ a { text-decoration: none; }
   margin: 0 auto;
   padding: 2.5rem 2rem;
   display: grid;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: 580px 320px;
   gap: 2rem;
   align-items: start;
 }
@@ -335,20 +481,22 @@ a { text-decoration: none; }
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
 }
-.act-card {
+.activities-block .act-card {
   background: var(--white);
   border: 1px solid var(--border-light);
   border-radius: 12px;
   overflow: hidden;
   cursor: pointer;
   transition: box-shadow 0.2s, transform 0.18s, border-color 0.2s;
+  display: block;
+  grid-template-columns: unset;
 }
-.act-card:hover {
+.activities-block .act-card:hover {
   box-shadow: 0 8px 32px rgba(26,39,68,0.10);
   transform: translateY(-2px);
   border-color: var(--border-mid);
 }
-.act-card-img {
+.activities-block .act-card-img {
   width: 100%;
   height: 120px;
   background: linear-gradient(135deg, #e8eef6 0%, #d4dded 100%);
@@ -357,8 +505,8 @@ a { text-decoration: none; }
   justify-content: center;
   position: relative;
 }
-.act-card-img svg { width: 28px; height: 28px; stroke: rgba(58,95,160,0.3); fill: none; stroke-width: 1.5; }
-.act-card-img .tag {
+.activities-block .act-card-img svg { width: 28px; height: 28px; stroke: rgba(58,95,160,0.3); fill: none; stroke-width: 1.5; }
+.activities-block .act-card-img .tag {
   position: absolute;
   top: 8px;
   left: 8px;
@@ -369,21 +517,23 @@ a { text-decoration: none; }
   border-radius: 4px;
   background: var(--navy);
   color: rgba(255,255,255,0.9);
+  writing-mode: horizontal-tb;
+  text-orientation: mixed;
 }
-.act-card-body { padding: 0.9rem 1rem; }
-.act-card-meta {
+.activities-block .act-card-body { padding: 0.9rem 1rem; }
+.activities-block .act-card-meta {
   font-size: 0.7rem;
   color: var(--text-muted);
   margin-bottom: 0.35rem;
 }
-.act-card-body h3 {
+.activities-block .act-card-body h3 {
   font-size: 0.88rem;
   font-weight: 600;
   color: var(--text-dark);
   margin-bottom: 0.3rem;
   line-height: 1.4;
 }
-.act-card-body p {
+.activities-block .act-card-body p {
   font-size: 0.75rem;
   color: var(--text-mid);
   line-height: 1.55;
@@ -393,7 +543,7 @@ a { text-decoration: none; }
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.act-card-foot {
+.activities-block .act-card-foot {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -683,13 +833,13 @@ footer {
   </div>
 
   <div class="hero-right">
-    <p class="upcoming-label">近期精選活動</p>
+    <p class="upcoming-label"><?= $uid ? '為你精選活動' : '精選活動' ?></p>
 
     <?php if ($featuredActivity): ?>
       <div class="activity-card-featured">
         <div class="act-img-hero">
           <svg viewBox="0 0 24 24"><path d="M9 19V6l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/></svg>
-          <span class="act-badge">近期活動</span>
+          <span class="act-badge"><?= $uid ? '推薦活動' : '近期活動' ?></span>
         </div>
 
         <div class="act-hero-body">
@@ -720,7 +870,7 @@ footer {
     <!-- Activities -->
     <div class="activities-block">
       <div class="sec-label">
-        <h2>近期活動</h2>
+        <h2><?= $uid ? '推薦活動' : '推薦活動' ?></h2>
         <a href="activities.php" class="see-all">查看全部 →</a>
       </div>
 
@@ -767,23 +917,25 @@ footer {
         <?php if (!empty($posts)): ?>
           <?php foreach ($posts as $post): ?>
             <?php
-              $typeLabel = $post['type'] === 'hot' ? '熱門' : '推薦';
-              $tagClass = $post['type'] === 'hot' ? 'red' : 'blue';
+              $typeLabel = ($post['type'] === 'hot') ? '熱門' : '推薦';
+              $tagClass  = ($post['type'] === 'hot') ? 'red' : 'blue';
+              $author    = $post['nickname'] ?: ($post['username'] ?? '匿名');
             ?>
-            <a href="post_detail.php?id=<?= h($post['id']) ?>" class="forum-item">
+            <a href="forum_post.php?id=<?= h($post['id']) ?>" class="forum-item">
               <div class="forum-icon"><?= $post['type'] === 'hot' ? '🔥' : '✨' ?></div>
 
               <div class="forum-body">
                 <div class="forum-tags">
                   <span class="ftag <?= h($tagClass) ?>"><?= h($typeLabel) ?></span>
-                  <span class="ftag gray"><?= h($post['club_name']) ?></span>
+                  <span class="ftag gray"><?= h($post['club_name'] ?? '論壇') ?></span>
                 </div>
 
                 <h3><?= h($post['title']) ?></h3>
-                <p><?= h(shortText($post['description'], 65)) ?></p>
+                <p><?= h(shortText($post['content'], 65)) ?></p>
 
                 <div class="forum-foot">
-                  <span class="forum-stat"><?= h(fmtDate($post['date'])) ?></span>
+                  <span class="forum-stat"><?= h(fmtDate($post['created_at'])) ?></span>
+                  <span class="forum-stat"><?= h($post['comment_count']) ?> 則留言</span>
                 </div>
               </div>
             </a>
@@ -853,7 +1005,7 @@ footer {
               <div class="club-info">
                 <div class="club-name"><?= h($club['name']) ?></div>
                 <div class="club-sub">
-                  <?= h($club['category']) ?> · <?= h($club['follower_count']) ?> 人追蹤
+                  <?= h($club['category']) ?> · <?= h($club['follower_count']) ?> 人訂閱
                 </div>
               </div>
 
