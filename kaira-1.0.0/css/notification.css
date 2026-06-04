@@ -1,0 +1,33 @@
+.notification-page h2,
+.notification-card,
+.notification-content,
+.notification-title,
+.notification-time,
+.notification-type {
+
+    font-family: "Noto Serif TC", serif !important;
+}
+
+.notification-page h2 {
+    font-family: "Noto Serif TC", serif !important;
+
+    text-align: left;
+    margin: 0 0 2rem 0;
+    padding-left: 0;
+}
+
+.notification-page {
+    width: 100%;
+    padding: 2rem 0 4rem;
+}
+
+
+.empty-notification {
+  background: #fff;
+  border: 1px solid rgba(26,39,68,0.10);
+  border-radius: 14px;
+  padding: 3rem;
+  text-align: center;
+  color: #8a91a8;
+  margin-top: 2rem;
+}

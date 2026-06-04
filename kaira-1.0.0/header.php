@@ -18,6 +18,7 @@ $username = $_SESSION['username'] ?? '';
     <link rel="stylesheet" href="css/index.css">
     <link rel="stylesheet" href="css/navbar.css">
     <link rel="stylesheet" href="css/profilebutton.css">
+    <link rel="stylesheet" href="css/notification.css">
     <style>
         .nav-username {
             color: #ffffff !important;

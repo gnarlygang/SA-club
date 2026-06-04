@@ -2,6 +2,7 @@
 session_start();
 date_default_timezone_set('Asia/Taipei');
 require_once "api/db.php";
+require_once "api/notification_service.php";
 
 $post_id         = isset($_GET["id"]) ? (int)$_GET["id"] : 0;
 $error           = "";
@@ -109,9 +110,30 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $is_logged_in) {
                 $pc->execute([$parent_id, $post_id]);
                 if (!$pc->fetch()) $parent_id = null;
             }
-            $pdo->prepare("INSERT INTO forum_comments (post_id,user_id,content,parent_id,is_anonymous) VALUES (?,?,?,?,?)")
-                ->execute([$post_id, $current_user_id, $content, $parent_id, $is_anonymous]);
-            header("Location: forum_post.php?id={$post_id}#comments"); exit;
+            $pdo->prepare("
+    INSERT INTO forum_comments
+    (post_id, user_id, content, parent_id, is_anonymous)
+    VALUES (?, ?, ?, ?, ?)
+")->execute([
+    $post_id,
+    $current_user_id,
+    $content,
+    $parent_id,
+    $is_anonymous
+]);
+
+$comment_id = $pdo->lastInsertId();
+
+notifyMentionedUsers(
+    $pdo,
+    $content,
+    $post_id,
+    $comment_id,
+    $current_user_id
+);
+
+header("Location: forum_post.php?id={$post_id}#comments");
+exit;
         }
     }
 }

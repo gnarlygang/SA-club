@@ -1,3 +1,7 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<meta charset="UTF-8">
+
 <?php
 session_start();
 
@@ -28,15 +32,10 @@ $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 
 ?>
-
-<!DOCTYPE html>
-<html lang="zh-Hant">
 <head>
 
-<meta charset="UTF-8">
-
 <title>通知中心</title>
-
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
 <style>
@@ -103,7 +102,7 @@ body{
 </head>
 <body>
 <?php require_once "header.php"; ?>
-<class="notification-page">
+<div class="notification-page">
 <h2>通知中心</h2>
 
 <?php if (count($notifications) > 0): ?>
@@ -135,6 +134,8 @@ body{
     <?php endforeach; ?>
 
 <?php else: ?>
+
+</div>
 
     <div class="empty-notification">
 
@@ -172,6 +173,8 @@ body{
 </div>
 
 <div class="modal-body" id="modalContent"></div>
+
+</div>
 
 </div>
 

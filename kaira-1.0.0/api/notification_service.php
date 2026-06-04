@@ -53,6 +53,29 @@ if ($role == 4) {
         return false;
     }
 
+    $roleStmt = $pdo->prepare("
+        SELECT role
+        FROM users
+        WHERE user_id = ?
+        LIMIT 1
+    ");
+
+    $roleStmt->execute([$user_id]);
+    $userRole = (int)$roleStmt->fetchColumn();
+
+    if ($userRole === 2) {
+        $allowedForClub = [
+            "announcement_created",
+            "announcement_updated",
+            "forum_mention"
+        ];
+
+        if (!in_array($notification_type, $allowedForClub, true)) {
+            debugLog("社團帳號略過通知：user_id={$user_id}, type={$notification_type}");
+            return false;
+        }
+    }
+
     if ($event_key === null) {
         $event_key = $notification_type . "_" . $target_type . "_" . $target_id . "_" . date("YmdHis");
     }
@@ -287,4 +310,98 @@ function notifyActivityFormSubmitters(
             $event_key
         );
     }
+}
+
+function notifyMentionedUsers($pdo, $content, $post_id, $comment_id, $sender_id)
+{
+    preg_match_all('/@([A-Za-z0-9_\x{4e00}-\x{9fa5}]+)/u', $content, $matches);
+
+    if (empty($matches[1])) {
+        return false;
+    }
+
+    $mentionNames = array_unique($matches[1]);
+
+    $placeholders = implode(',', array_fill(0, count($mentionNames), '?'));
+
+    $stmt = $pdo->prepare("
+    SELECT
+        user_id,
+        username,
+        nickname,
+        email
+    FROM users
+    WHERE role <> 4
+    AND notification_enabled = 1
+    AND email IS NOT NULL
+    AND TRIM(email) <> ''
+    AND (
+        nickname IN ($placeholders)
+        OR username IN ($placeholders)
+    )
+");
+
+    $stmt->execute(array_merge($mentionNames, $mentionNames));
+    $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    if (!$users) {
+        return false;
+    }
+
+    $postStmt = $pdo->prepare("
+        SELECT title
+        FROM forum_posts
+        WHERE id = ?
+        LIMIT 1
+    ");
+    $postStmt->execute([$post_id]);
+    $post = $postStmt->fetch(PDO::FETCH_ASSOC);
+
+    $senderStmt = $pdo->prepare("
+        SELECT username, nickname
+        FROM users
+        WHERE user_id = ?
+        LIMIT 1
+    ");
+    $senderStmt->execute([$sender_id]);
+    $sender = $senderStmt->fetch(PDO::FETCH_ASSOC);
+
+    $postTitle = $post ? $post["title"] : "論壇貼文";
+    $senderName = $sender ? ($sender["nickname"] ?: $sender["username"]) : "某位使用者";
+
+    $url = "http://localhost/SA-club/kaira-1.0.0/forum_post.php?id=" . $post_id . "#comments";
+
+    foreach ($users as $user) {
+        if ((int)$user["user_id"] === (int)$sender_id) {
+            continue;
+        }
+
+        $subject = "你在論壇中被提及";
+
+        $body = "
+            <h2>你在論壇中被提及</h2>
+            <p>{$senderName} 在貼文「{$postTitle}」中提到了你。</p>
+            <p>請點擊下方按鈕查看內容。</p>
+            <a href='{$url}'>
+查看活動
+</a>
+        ";
+
+        $eventKey = "mention_comment_" . $comment_id . "_" . $user["user_id"];
+
+        sendOnce(
+    $pdo,
+    $user["user_id"],
+    $user["email"],
+    "forum_mention",
+    "forum_post",
+    $post_id,
+    $subject,
+    $body,
+    $url,
+    $eventKey
+);
+    }
+
+    return true;
 }

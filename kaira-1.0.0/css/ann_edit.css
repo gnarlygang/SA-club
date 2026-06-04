@@ -6,7 +6,7 @@
 
 body {
   margin: 0;
-  font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
+  font-family: 'Noto Serif TC', serif;
   background: var(--cream);
   color: var(--text-dark);
   min-height: 100vh;
