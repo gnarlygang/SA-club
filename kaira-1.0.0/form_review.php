@@ -194,6 +194,23 @@ a{text-decoration:none;color:inherit}
 .btn-gold{background:var(--gold);color:var(--navy);border:none;padding:.5rem 1.1rem;border-radius:7px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit}
 .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-muted);font-size:.88rem}
 @media(max-width:700px){.layout{grid-template-columns:1fr}.sidebar-nav{margin-bottom:1rem}}
+.btn-export{
+background:var(--gold);
+color:var(--navy);
+padding:.55rem 1rem;
+border-radius:8px;
+font-size:.78rem;
+font-weight:700;
+display:inline-flex;
+align-items:center;
+justify-content:center;
+transition:.2s;
+}
+
+.btn-export:hover{
+background:var(--gold-light);
+transform:translateY(-1px);
+}
 </style>
 </head>
 <body>
@@ -247,10 +264,24 @@ a{text-decoration:none;color:inherit}
     $filterStatus = $_GET['filter'] ?? 'all';
   ?>
     <div class="main-card">
-      <div class="main-card-header">
-        <h2><?= h($currentForm['title']) ?></h2>
-        <span style="font-size:.78rem;color:rgba(255,255,255,.5)"><?= h($currentForm['act_title']) ?></span>
-      </div>
+     <div class="main-card-header">
+  <h2><?= h($currentForm['title']) ?></h2>
+
+  <div style="display:flex;align-items:center;gap:14px;">
+
+    <span style="font-size:.78rem;color:rgba(255,255,255,.5)">
+      <?= h($currentForm['act_title']) ?>
+    </span>
+
+    <a
+      href="export_excel.php?form_id=<?= h($formId) ?>"
+      class="btn-export"
+    >
+      📊 匯出 Excel
+    </a>
+
+  </div>
+</div>
 
       <!-- 統計 -->
       <div class="stats-row">
