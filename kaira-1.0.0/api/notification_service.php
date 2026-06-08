@@ -322,7 +322,7 @@ function notifyActivityFormSubmitters(
     }
 }
 
-function notifyMentionedUsers($pdo, $content, $post_id, $comment_id, $sender_id)
+function notifyMentionedUsers($pdo, $content, $post_id, $comment_id, $sender_id, $is_anonymous = 0)
 {
     preg_match_all('/@([A-Za-z0-9_\x{4e00}-\x{9fa5}]+)/u', $content, $matches);
 
@@ -377,7 +377,7 @@ function notifyMentionedUsers($pdo, $content, $post_id, $comment_id, $sender_id)
     $sender = $senderStmt->fetch(PDO::FETCH_ASSOC);
 
     $postTitle = $post ? $post["title"] : "論壇貼文";
-    $senderName = $sender ? ($sender["nickname"] ?: $sender["username"]) : "某位使用者";
+    $senderName = $is_anonymous ? "匿名使用者" : ($sender ? ($sender["nickname"] ?: $sender["username"]) : "某位使用者");
 
     $url = "http://localhost/SA-club/kaira-1.0.0/forum_post.php?id=" . $post_id . "#comments";
 

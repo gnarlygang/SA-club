@@ -1033,56 +1033,63 @@ footer {
 
 <?php if (isset($_SESSION['user_id'])): ?>
 
-<script>
+<?php if (isset($_SESSION['user_id']) && ($_SESSION['role'] ?? null) != 4): ?>
 
+<script>
 fetch("api/check_notification_status.php")
     .then(res => res.json())
     .then(data => {
 
         if (!data.notification_enabled) {
 
-            Swal.fire({
+            const userRole = <?= json_encode($_SESSION['role'] ?? null) ?>;
 
-                title: '🔔 通知設定',
+            let notifyHtml = "";
 
-                html: `
+            if (Number(userRole) === 2) {
+                // 社團
+                notifyHtml = `
                     <div style="text-align:left">
                         是否願意接收：
                         <br><br>
-
+                        • 系統公告通知<br>
+                        • 論壇 @ 提及通知
+                    </div>
+                `;
+            } else {
+                // 學生維持原樣
+                notifyHtml = `
+                    <div style="text-align:left">
+                        是否願意接收：
+                        <br><br>
                         • 活動更新通知<br>
                         • 系統公告通知<br>
                         • 收藏提醒通知
                     </div>
-                `,
+                `;
+            }
 
+            Swal.fire({
+                title: '🔔 通知設定',
+                html: notifyHtml,
                 icon: 'info',
-
                 showCancelButton: true,
-
                 confirmButtonText: '接受通知',
-
                 cancelButtonText: '不要通知',
-
                 allowOutsideClick: false
-
             }).then((result) => {
 
                 if (result.isConfirmed) {
 
                     fetch("api/enable_notification.php", {
-
                         method: "POST"
-
                     })
                     .then(res => res.json())
                     .then(data => {
-
                         Swal.fire({
                             icon: 'success',
                             title: '通知已開啟'
                         });
-
                     });
 
                 }
@@ -1092,8 +1099,9 @@ fetch("api/check_notification_status.php")
         }
 
     });
-
 </script>
+
+<?php endif; ?>
 
 <?php endif; ?>
 
