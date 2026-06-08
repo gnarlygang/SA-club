@@ -71,13 +71,14 @@
 
 /* 空狀態 */
 .empty-notification {
-  background: #ffffff;
-  border: 1px solid rgba(26, 39, 68, 0.08);
+  background: #fff;
+  border: 1px solid rgba(26,39,68,0.08);
   border-radius: 18px;
   padding: 4rem 2rem;
   text-align: center;
   color: #7c8aa5;
-  box-shadow: 0 8px 24px rgba(26, 39, 68, 0.05);
+  margin-top: 0;
+  box-shadow: 0 8px 24px rgba(26,39,68,0.05);
 }
 
 /* 手機版 */

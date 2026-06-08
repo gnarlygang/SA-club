@@ -135,7 +135,7 @@ body{
 
 <?php else: ?>
 
-</div>
+
 
     <div class="empty-notification">
 
