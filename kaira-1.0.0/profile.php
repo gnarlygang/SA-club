@@ -500,6 +500,21 @@ $notifyEnabled = !empty($user["notification_enabled"]);
       .sub-layout  { grid-template-columns: 1fr; }
       .sub-sidebar { max-height: none; border-right: none; border-bottom: 1px solid var(--border); }
     }
+
+    /* 左側分類展開後的社團文字 */
+.category-clubs .side-club .club-text strong {
+  display: block;
+  font-size: 13px;
+  color: #ffffff !important;
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+.category-clubs .side-club .club-text p {
+  font-size: 11px;
+  color: rgba(255,255,255,.75) !important;
+  margin: 0;
+}
   </style>
 </head>
 
