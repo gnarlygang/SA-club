@@ -1,33 +1,102 @@
-.notification-page h2,
-.notification-card,
-.notification-content,
-.notification-title,
-.notification-time,
-.notification-type {
 
-    font-family: "Noto Serif TC", serif !important;
-}
 
-.notification-page h2 {
-    font-family: "Noto Serif TC", serif !important;
-
-    text-align: left;
-    margin: 0 0 2rem 0;
-    padding-left: 0;
-}
-
+/* 通知中心主區塊 */
 .notification-page {
-    width: 100%;
-    padding: 2rem 0 4rem;
+  width: 100%;
+  padding: 2.5rem 3rem 4rem;
+  min-height: calc(100vh - 60px - 330px);
+  background: #f5f7fb;
 }
 
+/* 標題 */
+.notification-page h2 {
+  font-family: "Noto Serif TC", serif !important;
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: #1a2744;
+  margin: 0 0 2rem 0;
+}
 
+/* 通知卡片 */
+.notification-card {
+  width: 100%;
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 1.4rem 1.6rem;
+  margin-bottom: 1.2rem;
+  cursor: pointer;
+  border: 1px solid rgba(26, 39, 68, 0.08);
+  box-shadow: 0 8px 24px rgba(26, 39, 68, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* hover */
+.notification-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(26, 39, 68, 0.1);
+}
+
+/* 未讀通知 */
+.notification-unread {
+  border-left: 6px solid #1a2744;
+}
+
+/* 通知類型標籤 */
+.notification-type {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: #edf3ff;
+  color: #1a4fd7;
+  margin-bottom: 0.8rem;
+}
+
+/* 通知標題 */
+.notification-card h5,
+.notification-title {
+  font-family: "Noto Serif TC", serif !important;
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: #0f1f3d;
+  margin-bottom: 0.55rem;
+}
+
+/* 時間 */
+.notification-time {
+  font-size: 0.95rem;
+  color: #7c8aa5;
+}
+
+/* 空狀態 */
 .empty-notification {
-  background: #fff;
-  border: 1px solid rgba(26,39,68,0.10);
-  border-radius: 14px;
-  padding: 3rem;
+  background: #ffffff;
+  border: 1px solid rgba(26, 39, 68, 0.08);
+  border-radius: 18px;
+  padding: 4rem 2rem;
   text-align: center;
-  color: #8a91a8;
-  margin-top: 2rem;
+  color: #7c8aa5;
+  box-shadow: 0 8px 24px rgba(26, 39, 68, 0.05);
+}
+
+/* 手機版 */
+@media (max-width: 768px) {
+  .notification-page {
+    padding: 2rem 1.2rem 3rem;
+  }
+
+  .notification-page h2 {
+    font-size: 2rem;
+  }
+
+  .notification-card {
+    padding: 1.2rem;
+    border-radius: 16px;
+  }
+
+  .notification-card h5,
+  .notification-title {
+    font-size: 1.25rem;
+  }
 }

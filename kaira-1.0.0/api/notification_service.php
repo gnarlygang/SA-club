@@ -126,16 +126,26 @@ if ($role == 4) {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
-    $log->execute([
-        $user_id,
-        $notification_type,
-        $target_type,
-        $target_id,
-        $event_key,
-        $subject,
-        trim(strip_tags($body)),
-        $url
-    ]);
+    $contentText = trim(strip_tags($body));
+
+$contentText = preg_replace(
+    '/\s*查看活動\s*$/u',
+    '',
+    $contentText
+);
+
+$contentText = trim($contentText);
+
+$log->execute([
+    $user_id,
+    $notification_type,
+    $target_type,
+    $target_id,
+    $event_key,
+    $subject,
+    $contentText,
+    $url
+]);
 
  
     return true;

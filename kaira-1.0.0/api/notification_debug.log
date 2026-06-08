@@ -173,3 +173,13 @@
 [2026-06-04 21:26:58] 進入 notifyActivityFavorites，activity_id=46
 [2026-06-04 21:26:58] 活動收藏通知人數：2
 [2026-06-04 21:26:58] 社團帳號略過通知：user_id=1401049, type=activity_deadline
+[2026-06-08 12:26:06] 略過重複通知：user_id=412402608, type=club_activity_created, target=activity:47, event=club_activity_created_47_20260608122557
+[2026-06-08 18:34:21] 略過重複通知：user_id=412402608, type=activity_start_reminder, target=activity:47, event=activity_start_47_20260608
+[2026-06-08 12:45:13] 略過重複通知：user_id=412402608, type=club_activity_created, target=activity:48, event=club_activity_created_48_20260608124504
+[2026-06-08 18:48:13] 略過重複通知：user_id=412402608, type=activity_start_reminder, target=activity:47, event=activity_start_47_20260608
+[2026-06-08 13:00:34] 略過重複通知：user_id=412402608, type=club_activity_created, target=activity:49, event=club_activity_created_49_20260608130025
+[2026-06-08 13:07:38] 進入 notifyActivityFavorites，activity_id=49
+[2026-06-08 13:07:38] 活動收藏通知人數：1
+[2026-06-08 13:08:35] 略過重複通知：user_id=412402608, type=club_activity_created, target=activity:50, event=club_activity_created_50_20260608130827
+[2026-06-08 19:15:54] 略過重複通知：user_id=412402608, type=activity_start_reminder, target=activity:47, event=activity_start_47_20260608
+[2026-06-08 19:15:54] 略過重複通知：user_id=412402608, type=activity_start_reminder, target=activity:48, event=activity_start_48_20260608

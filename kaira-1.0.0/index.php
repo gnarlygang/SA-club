@@ -1062,7 +1062,7 @@ fetch("api/check_notification_status.php")
 
                 confirmButtonText: '接受通知',
 
-                cancelButtonText: '稍後再說',
+                cancelButtonText: '不要通知',
 
                 allowOutsideClick: false
 
