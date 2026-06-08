@@ -183,3 +183,5 @@
 [2026-06-08 13:08:35] 略過重複通知：user_id=412402608, type=club_activity_created, target=activity:50, event=club_activity_created_50_20260608130827
 [2026-06-08 19:15:54] 略過重複通知：user_id=412402608, type=activity_start_reminder, target=activity:47, event=activity_start_47_20260608
 [2026-06-08 19:15:54] 略過重複通知：user_id=412402608, type=activity_start_reminder, target=activity:48, event=activity_start_48_20260608
+[2026-06-08 14:48:42] 進入 notifyActivityFavorites，activity_id=33
+[2026-06-08 14:48:42] 活動收藏通知人數：0

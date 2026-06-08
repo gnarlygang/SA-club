@@ -35,10 +35,13 @@ $formStmt->execute([$formId]);
 $form = $formStmt->fetch(PDO::FETCH_ASSOC);
 if (!$form) { echo '<p>表單不存在</p>'; exit; }
 
-// 欄位
+// 欄位（Google 表單模式不需要，但仍載入備用）
 $fieldsStmt = $pdo->prepare("SELECT * FROM form_fields WHERE form_id=? ORDER BY sort_order");
 $fieldsStmt->execute([$formId]);
 $fields = $fieldsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+// 判斷是否為 Google 表單模式
+$isGoogleMode = !empty($form['google_form_url']);
 
 // 已有的報名紀錄
 $existingStmt = $pdo->prepare("SELECT * FROM form_submissions WHERE form_id=? AND user_id=?");
@@ -60,8 +63,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'confi
     $mode = 'status';
 }
 
-// ── 提交報名 ────────────────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submit') {
+// ── 提交報名（僅自訂表單模式） ──────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submit' && !$isGoogleMode) {
 
     if ($form['status'] !== 'open') {
         $msg = 'error:此表單已關閉，無法報名';
@@ -78,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submi
         }
 
         if (!str_starts_with($msg, 'error')) {
-            // 驗證必填（checkbox 為陣列，其他為字串，統一處理）
+            // 驗證必填
             $hasError = false;
             foreach ($fields as $f) {
                 $raw = $_POST['field_'.$f['id']] ?? '';
@@ -99,7 +102,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submi
 
                 foreach ($fields as $f) {
                     $raw = $_POST['field_'.$f['id']] ?? '';
-                    // ★ 修正：checkbox 傳回陣列，用逗號串接後存入
                     $ans = is_array($raw) ? implode(', ', $raw) : trim($raw);
                     $pdo->prepare("INSERT INTO form_answers (submission_id, field_id, answer) VALUES (?,?,?)")
                         ->execute([$subId, $f['id'], $ans]);
@@ -164,7 +166,7 @@ textarea{resize:vertical;min-height:90px}
 .radio-group label,.checkbox-group label{font-size:.85rem;font-weight:400;display:flex;align-items:center;gap:.5rem;cursor:pointer}
 .radio-group input,.checkbox-group input{width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
 .submit-area{margin-top:1.5rem;padding-top:1.2rem;border-top:1px solid var(--border-light)}
-.btn-submit{background:var(--accent);color:#fff;border:none;padding:.75rem 2rem;border-radius:10px;font-size:.95rem;font-weight:700;cursor:pointer;font-family:inherit;width:100%;transition:background .18s}
+.btn-submit{background:var(--accent);color:#fff;border:none;padding:.75rem 2rem;border-radius:10px;font-size:.95rem;font-weight:700;cursor:pointer;font-family:inherit;width:100%;transition:background .18s;display:block;text-align:center}
 .btn-submit:hover{background:var(--accent-hover)}
 .btn-submit:disabled{background:var(--text-muted);cursor:not-allowed}
 .status-card{background:var(--white);border:1px solid var(--border-light);border-top:none;border-radius:0 0 14px 14px;padding:2rem 1.8rem}
@@ -194,6 +196,25 @@ textarea{resize:vertical;min-height:90px}
 .ans-label{font-weight:600;color:var(--text-mid);min-width:100px;flex-shrink:0}
 .ans-val{color:var(--text-dark)}
 .form-closed-notice{background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:1rem 1.2rem;margin-bottom:1rem;color:#991b1b;font-size:.85rem;text-align:center}
+
+/* Google 表單模式專用樣式 */
+.google-mode-box{text-align:center;padding:1.8rem 1rem}
+.google-mode-box .g-icon{font-size:2.8rem;margin-bottom:.8rem}
+.google-mode-box h3{font-family:'Noto Serif TC',serif;font-size:1.1rem;font-weight:700;color:var(--navy);margin-bottom:.5rem}
+.google-mode-box p{font-size:.84rem;color:var(--text-mid);line-height:1.8;margin-bottom:1.4rem}
+.btn-google{
+  display:inline-flex;align-items:center;justify-content:center;gap:.5rem;
+  background:var(--accent);color:#fff;border:none;
+  padding:.75rem 2rem;border-radius:10px;
+  font-size:.95rem;font-weight:700;cursor:pointer;font-family:inherit;
+  width:100%;transition:background .18s;text-decoration:none
+}
+.btn-google:hover{background:var(--accent-hover)}
+.google-notice-small{
+  margin-top:.9rem;font-size:.75rem;color:var(--text-muted);
+  background:var(--cream);border-radius:8px;padding:.65rem .9rem;
+  border-left:3px solid var(--gold);text-align:left;line-height:1.7
+}
 </style>
 </head>
 <body>
@@ -207,7 +228,7 @@ textarea{resize:vertical;min-height:90px}
   <div class="act-meta-row">
     <div class="act-meta-item">📅 <strong><?= fmtDT($form['event_start']) ?></strong></div>
     <div class="act-meta-item">📍 <strong><?= h($form['location']) ?></strong></div>
-    <?php if ($form['quota']): ?>
+    <?php if ($form['quota'] && !$isGoogleMode): ?>
       <div class="act-meta-item">👥 <strong>名額：<?= h($form['quota']) ?> 人</strong></div>
     <?php endif; ?>
   </div>
@@ -221,7 +242,12 @@ textarea{resize:vertical;min-height:90px}
   </div>
 <?php endif; ?>
 
-<?php if ($form['status'] !== 'open' && !$existing): ?>
+<?php
+// ══════════════════════════════════════════════════════
+// ① 表單已關閉且尚未報名
+// ══════════════════════════════════════════════════════
+if ($form['status'] !== 'open' && !$existing && !$isGoogleMode):
+?>
 <div class="form-card">
   <div class="form-closed-notice">⚠️ 此報名表單目前已關閉，無法接受新的報名</div>
   <div style="text-align:center;padding:1rem 0">
@@ -229,7 +255,51 @@ textarea{resize:vertical;min-height:90px}
   </div>
 </div>
 
-<?php elseif ($mode === 'status' && $existing): ?>
+<?php
+// ══════════════════════════════════════════════════════
+// ② Google 表單模式
+// ══════════════════════════════════════════════════════
+elseif ($isGoogleMode):
+?>
+<div class="form-card">
+  <?php if ($form['description']): ?>
+    <div class="form-desc"><?= nl2br(h($form['description'])) ?></div>
+  <?php endif; ?>
+
+  <?php if ($form['status'] !== 'open'): ?>
+    <div class="form-closed-notice">⚠️ 此報名表單目前已關閉，無法接受新的報名</div>
+    <div style="text-align:center;padding:1rem 0">
+      <a href="activities.php" style="color:var(--accent);font-size:.88rem">← 返回活動列表</a>
+    </div>
+  <?php else: ?>
+    <div class="google-mode-box">
+      <div class="g-icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M21.35 11.1H12.18v2.94h5.28c-.23 1.26-.95 2.33-2.02 3.04v2.53h3.27c1.91-1.76 3.01-4.35 3.01-7.44 0-.63-.06-1.24-.17-1.84z" fill="#4285F4"/>
+          <path d="M12.18 22c2.76 0 5.07-.91 6.76-2.46l-3.27-2.53c-.91.61-2.07.97-3.49.97-2.68 0-4.95-1.81-5.76-4.25H3.05v2.6C4.73 19.98 8.19 22 12.18 22z" fill="#34A853"/>
+          <path d="M6.42 13.73a5.97 5.97 0 010-3.46V7.67H3.05a10.02 10.02 0 000 8.66l3.37-2.6z" fill="#FBBC05"/>
+          <path d="M12.18 5.56c1.51 0 2.86.52 3.92 1.54l2.94-2.94C17.24 2.49 14.94 1.5 12.18 1.5 8.19 1.5 4.73 3.52 3.05 6.67l3.37 2.6c.81-2.44 3.08-4.71 5.76-4.71z" fill="#EA4335"/>
+        </svg>
+      </div>
+      <h3>此活動使用 Google 表單報名</h3>
+      <p>點擊下方按鈕前往 Google 表單填寫報名資料。<br>填寫完成後即完成報名，無需回到此頁面。</p>
+      <a href="<?= h($form['google_form_url']) ?>" target="_blank" rel="noopener noreferrer" class="btn-google">
+        📋 前往 Google 表單報名 ↗
+      </a>
+      <div class="google-notice-small">
+        ⚠️ 報名資料由 Google 收集管理，平台不會記錄你的填寫內容。<br>
+        如有報名相關問題，請直接聯繫社團幹部。
+      </div>
+    </div>
+  <?php endif; ?>
+</div>
+
+<?php
+// ══════════════════════════════════════════════════════
+// ③ 自訂表單：顯示報名狀態
+// ══════════════════════════════════════════════════════
+elseif ($mode === 'status' && $existing):
+?>
 <div class="status-card">
   <div class="status-hero">
     <?php if ($existing['status']==='pending'): ?>
@@ -301,7 +371,12 @@ textarea{resize:vertical;min-height:90px}
   </div>
 </div>
 
-<?php else: ?>
+<?php
+// ══════════════════════════════════════════════════════
+// ④ 自訂表單：填寫表單
+// ══════════════════════════════════════════════════════
+else:
+?>
 <div class="form-card">
   <?php if ($form['description']): ?>
     <div class="form-desc"><?= nl2br(h($form['description'])) ?></div>
