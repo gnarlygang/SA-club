@@ -9,17 +9,14 @@ $error = "";
 $club_id = isset($_GET["id"]) ? (int)$_GET["id"] : (isset($_POST["club_id"]) ? (int)$_POST["club_id"] : 0);
 
 try {
-    // 所有可用標籤
     $all_tags_stmt = $pdo->query("SELECT DISTINCT tag_name FROM club_tags ORDER BY tag_name ASC");
     $all_tags = $all_tags_stmt->fetchAll(PDO::FETCH_COLUMN);
 
-    // 處理 POST 送出
     if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $description   = trim($_POST["description"]  ?? "");
         $image         = trim($_POST["image"]         ?? "");
         $email         = trim($_POST["email"]         ?? "");
         $short_name    = trim($_POST["short_name"]    ?? "");
-        $keywords      = trim($_POST["keywords"]      ?? "");
         $selected_tags = $_POST["tags"] ?? [];
 
         $selected_tags = array_values(array_intersect($selected_tags, $all_tags));
@@ -33,12 +30,11 @@ try {
         } elseif (count($selected_tags) > 3) {
             $error = "最多只能選擇 3 個標籤。";
         } else {
-            $stmt = $pdo->prepare("UPDATE clubs SET description=:description, image=:image, short_name=:short_name, keywords=:keywords WHERE id=:id AND user_id=:uid");
+            $stmt = $pdo->prepare("UPDATE clubs SET description=:description, image=:image, short_name=:short_name WHERE id=:id AND user_id=:uid");
             $stmt->execute([
                 ":description" => $description,
                 ":image"       => $image,
                 ":short_name"  => $short_name,
-                ":keywords"    => $keywords,
                 ":id"          => $club_id,
                 ":uid"         => $_SESSION["user_id"] ?? null,
             ]);
@@ -71,10 +67,7 @@ $form_description = isset($_POST["description"]) ? $_POST["description"] : ($clu
 $form_image       = isset($_POST["image"])       ? $_POST["image"]       : ($club["image"]       ?? "");
 $form_email       = isset($_POST["email"])       ? $_POST["email"]       : ($club["email"]       ?? "");
 $form_short_name  = isset($_POST["short_name"])  ? $_POST["short_name"]  : ($club["short_name"]  ?? "");
-$form_keywords    = isset($_POST["keywords"])    ? $_POST["keywords"]    : ($club["keywords"]    ?? "");
 $form_tags        = isset($_POST["tags"])        ? $_POST["tags"]        : $current_tags;
-
-require_once "header.php";
 ?>
 <!DOCTYPE html>
 <html lang="zh-Hant">
@@ -122,12 +115,29 @@ require_once "header.php";
     .input-group:focus-within .input-group-text { border-color: #6e8ab0; }
     .hint-text { font-size: 11px; color: #9aa; margin-top: 5px; }
     .alert-error { background: #fdf0ef; border: 1px solid #f0c4c0; color: var(--error-color); border-radius: 8px; padding: 10px 14px; font-size: 13px; display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
+
+    /* 標籤搜尋框 */
+    .tag-search-wrap { display: flex; align-items: center; gap: .5rem; background: #f5f5f7; border: 1.5px solid var(--input-border); border-radius: 8px; padding: .45rem .9rem; margin-bottom: 10px; }
+    .tag-search-wrap i { color: #8888aa; font-size: .9rem; flex-shrink: 0; }
+    .tag-search-wrap input { border: none; outline: none; background: transparent; font-size: .85rem; width: 100%; color: #333; }
+    .tag-search-wrap input::placeholder { color: #aab; }
+    .tag-no-result { display: none; font-size: 13px; color: #9aa; padding: 8px 4px; text-align: center; }
+
+    /* 已選標籤預覽 */
+    .selected-tags-preview { display: flex; flex-wrap: wrap; gap: 6px; min-height: 32px; margin-bottom: 10px; }
+    .selected-tag-pill { display: inline-flex; align-items: center; gap: 5px; background: #2d3a4a; color: #fff; border-radius: 999px; padding: 4px 12px; font-size: 12px; font-weight: 600; }
+    .selected-tag-pill .remove-tag { cursor: pointer; font-size: 14px; line-height: 1; opacity: .7; }
+    .selected-tag-pill .remove-tag:hover { opacity: 1; }
+
+    /* 標籤選擇區 */
     .tag-picker-wrap { display: flex; flex-wrap: wrap; gap: 8px; padding: 14px; background: #f8fafc; border: 1.5px solid var(--input-border); border-radius: 10px; max-height: 220px; overflow-y: auto; }
     .tag-chip input[type="checkbox"] { display: none; }
     .tag-chip label { display: inline-block; padding: 5px 13px; border-radius: 999px; font-size: 12.5px; font-weight: 500; border: 1.5px solid #c8d0dc; background: #fff; color: #556; cursor: pointer; transition: all .15s; user-select: none; }
     .tag-chip label:hover { border-color: #6e8ab0; background: #eef3fa; color: #2d3a4a; }
     .tag-chip input:checked + label { background: #2d3a4a; border-color: #2d3a4a; color: #fff; }
     .tag-chip input:disabled + label { opacity: .45; cursor: not-allowed; }
+    .tag-chip.hidden { display: none; }
+
     .tag-count-hint { font-size: 12px; color: #9aa; margin-top: 6px; }
     .tag-count-hint.warn { color: #c0392b; font-weight: 600; }
     .divider { border: none; border-top: 1px solid #e8ecf0; margin: 28px 0; }
@@ -138,6 +148,7 @@ require_once "header.php";
   </style>
 </head>
 <body>
+<?php require_once "header.php"; ?>
 
 <div class="page-shell">
   <main class="main-content">
@@ -227,18 +238,6 @@ require_once "header.php";
               <div class="hint-text">社團的常用簡稱，最多 20 字，可留空。搜尋時也可用簡稱找到。</div>
             </div>
 
-            <!-- 關鍵字 -->
-            <div class="mb-4">
-              <label class="form-label">搜尋關鍵字</label>
-              <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-tags"></i></span>
-                <input type="text" class="form-control" name="keywords"
-                       placeholder="例如：舞蹈、韓流、表演、街舞（用逗號分隔）"
-                       value="<?= htmlspecialchars($form_keywords) ?>">
-              </div>
-              <div class="hint-text">讓使用者輸入相關詞彙時能找到你的社團，多個關鍵字請用逗號「,」分隔。</div>
-            </div>
-
             <!-- 聯絡信箱 -->
             <div class="mb-4">
               <label class="form-label">聯絡信箱</label>
@@ -254,11 +253,23 @@ require_once "header.php";
             <!-- 標籤選擇 -->
             <div class="mb-4">
               <label class="form-label">社團標籤 <span style="color:#c0392b;">*</span></label>
+
+              <!-- 已選標籤預覽 -->
+              <div class="selected-tags-preview" id="selectedTagsPreview"></div>
+
+              <!-- 標籤搜尋框 -->
+              <div class="tag-search-wrap">
+                <i class="bi bi-search"></i>
+                <input type="text" id="tagSearchInput"
+                       placeholder="輸入關鍵字篩選標籤…"
+                       oninput="filterTags(this.value)">
+              </div>
+
               <div class="tag-picker-wrap" id="tagPickerWrap">
                 <?php foreach ($all_tags as $tag):
                   $checked = in_array($tag, $form_tags) ? 'checked' : '';
                 ?>
-                <span class="tag-chip">
+                <span class="tag-chip" data-tag="<?= htmlspecialchars($tag) ?>">
                   <input type="checkbox" name="tags[]"
                          id="tag_<?= htmlspecialchars($tag) ?>"
                          value="<?= htmlspecialchars($tag) ?>"
@@ -268,6 +279,9 @@ require_once "header.php";
                 </span>
                 <?php endforeach; ?>
               </div>
+
+              <div class="tag-no-result" id="tagNoResult">找不到符合的標籤</div>
+
               <div class="tag-count-hint" id="tagHint">
                 已選擇 <strong id="tagCountNum"><?= count($form_tags) ?></strong> / 3 個標籤（至少 1 個，最多 3 個）
               </div>
@@ -294,29 +308,65 @@ require_once "header.php";
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+function updateSelectedPreview() {
+  const preview = document.getElementById('selectedTagsPreview');
+  const checked = document.querySelectorAll('#tagPickerWrap input[type="checkbox"]:checked');
+  preview.innerHTML = '';
+  checked.forEach(function(cb) {
+    const pill = document.createElement('span');
+    pill.className = 'selected-tag-pill';
+    pill.innerHTML = cb.value +
+      '<span class="remove-tag" onclick="removeTag(\'' + cb.id + '\')">×</span>';
+    preview.appendChild(pill);
+  });
+}
+
+function removeTag(inputId) {
+  const cb = document.getElementById(inputId);
+  if (cb) { cb.checked = false; onTagChange(cb); }
+}
+
 function onTagChange(checkbox) {
   const allChecked = document.querySelectorAll('#tagPickerWrap input[type="checkbox"]:checked');
   const count = allChecked.length;
   document.getElementById('tagCountNum').textContent = count;
   const hintEl = document.getElementById('tagHint');
   if (count >= 3) {
-    document.querySelectorAll('#tagPickerWrap input[type="checkbox"]:not(:checked)').forEach(cb => { cb.disabled = true; });
+    document.querySelectorAll('#tagPickerWrap input[type="checkbox"]:not(:checked)')
+      .forEach(cb => { cb.disabled = true; });
     hintEl.className = 'tag-count-hint warn';
   } else {
-    document.querySelectorAll('#tagPickerWrap input[type="checkbox"]').forEach(cb => { cb.disabled = false; });
+    document.querySelectorAll('#tagPickerWrap input[type="checkbox"]')
+      .forEach(cb => { cb.disabled = false; });
     hintEl.className = 'tag-count-hint';
   }
+  updateSelectedPreview();
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function filterTags(keyword) {
+  const kw = keyword.trim().toLowerCase();
+  let visibleCount = 0;
+  document.querySelectorAll('#tagPickerWrap .tag-chip').forEach(function(chip) {
+    const tagName = (chip.dataset.tag || '').toLowerCase();
+    const match   = kw === '' || tagName.includes(kw);
+    chip.classList.toggle('hidden', !match);
+    if (match) visibleCount++;
+  });
+  document.getElementById('tagNoResult').style.display =
+    (kw !== '' && visibleCount === 0) ? 'block' : 'none';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  updateSelectedPreview();
   const checked = document.querySelectorAll('#tagPickerWrap input[type="checkbox"]:checked');
   if (checked.length >= 3) {
-    document.querySelectorAll('#tagPickerWrap input[type="checkbox"]:not(:checked)').forEach(cb => { cb.disabled = true; });
+    document.querySelectorAll('#tagPickerWrap input[type="checkbox"]:not(:checked)')
+      .forEach(cb => { cb.disabled = true; });
     document.getElementById('tagHint').className = 'tag-count-hint warn';
   }
 });
 
-const imageInput = document.getElementById("imageInput");
+const imageInput  = document.getElementById("imageInput");
 const previewWrap = document.getElementById("previewWrap");
 
 function showPlaceholder() {
@@ -332,7 +382,7 @@ function updatePreview(url) {
 }
 
 let debounceTimer;
-imageInput.addEventListener("input", function () {
+imageInput.addEventListener("input", function() {
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => updatePreview(this.value.trim()), 800);
 });

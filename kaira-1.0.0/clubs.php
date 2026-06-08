@@ -158,7 +158,23 @@ body { font-family: "Microsoft JhengHei", sans-serif; background: #f8f9fa; }
 .cat-音樂性社團    { background:#fce7f3; color:#9d174d; }
 
 .club-name { font-size:1rem; font-weight:700; color:#1a1a2e; margin-bottom:.35rem; }
-.club-en   { font-size:.75rem; color:#999; margin-bottom:.5rem; }
+
+/* ★ 簡稱樣式：小字、灰色、與描述之間留間距 */
+.club-short-name {
+    font-size:.75rem; color:#999; margin-bottom:.3rem;
+}
+
+/* ★ 描述文字：固定顯示，超出截斷 */
+.club-desc {
+    font-size:.78rem; color:#666;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.55;
+    margin-bottom: 0;
+}
+
 .club-tags { margin-top:.7rem; display:flex; flex-wrap:wrap; gap:.3rem; }
 .club-tag  { font-size:.68rem; padding:.15rem .5rem; border-radius:99px; background:#f5f5f5; color:#777; border:1px solid #e8e8e8; }
 .club-card-footer {
@@ -264,11 +280,11 @@ body { font-family: "Microsoft JhengHei", sans-serif; background: #f8f9fa; }
         <div class="club-card-body">
             <span class="club-cat-badge <?= $catCls ?>"><?= htmlspecialchars($club['category']) ?></span>
             <div class="club-name"><?= htmlspecialchars($club['name']) ?></div>
-            <?php if (!empty($club['short_name'])): ?>
-                <div class="club-en"><?= htmlspecialchars($club['short_name']) ?></div>
-            <?php elseif (!empty($club['description'])): ?>
-                <div class="club-en"><?= htmlspecialchars(mb_substr($club['description'], 0, 40)) ?></div>
+
+            <?php if (!empty($club['description'])): ?>
+                <div class="club-desc"><?= htmlspecialchars(mb_substr($club['description'], 0, 60)) ?></div>
             <?php endif; ?>
+
             <?php if (!empty($tags)): ?>
             <div class="club-tags">
                 <?php foreach (array_slice($tags, 0, 3) as $tag): ?>
