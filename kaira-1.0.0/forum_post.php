@@ -129,7 +129,8 @@ notifyMentionedUsers(
     $content,
     $post_id,
     $comment_id,
-    $current_user_id
+    $current_user_id,
+    $is_anonymous
 );
 
 header("Location: forum_post.php?id={$post_id}#comments");
